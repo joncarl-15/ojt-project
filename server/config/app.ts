@@ -57,5 +57,14 @@ export const createApp = (io?: SocketIOServer): express.Application => {
   app.use(notFound);
   app.use(errorHandler);
 
+  // Add explicit root handler for health check
+  app.get("/", (_req, res) => {
+    res.json({
+      status: "success",
+      message: "OJT Monitoring System API is running",
+      timestamp: new Date().toISOString()
+    });
+  });
+
   return app;
 };
