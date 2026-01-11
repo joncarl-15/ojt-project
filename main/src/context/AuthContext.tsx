@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('accessToken', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
         // Reset session seen flag so tutorial can show again for this new login session
-        sessionStorage.removeItem('ojt_tutorial_session_seen');
+        sessionStorage.removeItem(`ojt_tutorial_session_seen_${newUser._id}`);
         setToken(newToken);
         setUser(newUser);
     };
@@ -51,7 +51,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
         // Reset session seen flag on logout as well
-        sessionStorage.removeItem('ojt_tutorial_session_seen');
+        if (user) {
+            sessionStorage.removeItem(`ojt_tutorial_session_seen_${user._id}`);
+        }
         setToken(null);
         setUser(null);
     };
