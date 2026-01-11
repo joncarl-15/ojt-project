@@ -46,6 +46,7 @@ export const createApp = (io?: SocketIOServer): express.Application => {
 
   //Routes
   routes.forEach((route) => {
+    console.log(`Mounting route: ${route.method.toUpperCase()} /api${route.path}`);
     app[route.method](`/api${route.path}`, createController(route));
   });
 
