@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
-import { Search, Send, User, MessageSquare, Users, Image as ImageIcon, X, Download, ArrowLeft } from 'lucide-react';
+import { Search, Send, User, MessageSquare, Users, Image as ImageIcon, X, Download, ArrowLeft, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,6 +28,7 @@ interface Message {
     image?: string;
     createdAt: string;
     isRead: boolean;
+    isSending?: boolean;
 }
 
 interface Conversation {
@@ -346,12 +347,13 @@ export const Messages: React.FC = () => {
             content: messageInput,
             image: imagePreview || undefined,
             createdAt: new Date().toISOString(),
-            isRead: false
+            isRead: false,
+            isSending: true
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
         setMessageInput('');
-        handleRemoveImage();
+        // Don't clear image yet, wait for send
 
         try {
             let imageUrl = '';
@@ -390,14 +392,19 @@ export const Messages: React.FC = () => {
             if (response.ok) {
                 const sentMessage = await response.json();
                 setMessages(prev => prev.map(msg => msg._id === tempId ? sentMessage : msg));
+                handleRemoveImage(); // Clear image input after successful send
             } else {
                 // Remove optimistic message if failed
                 setMessages(prev => prev.filter(msg => msg._id !== tempId));
+                handleRemoveImage();
+                alert("Failed to send message");
             }
         } catch (error) {
             console.error("Failed to send message", error);
             // Remove optimistic message if failed
             setMessages(prev => prev.filter(msg => msg._id !== tempId));
+            handleRemoveImage();
+            alert("Failed to send message");
         }
     };
 
@@ -555,7 +562,7 @@ export const Messages: React.FC = () => {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     const targetPath = user?.role === 'student' ? '/my-tasks' : '/tasks';
-                                    navigate(`${targetPath} ? highlight = ${taskMap.get(lowerPart)}`);
+                                    navigate(`${targetPath}?highlight=${taskMap.get(lowerPart)}`);
                                 }}
                                 title="Go to Task"
                             >
@@ -571,7 +578,7 @@ export const Messages: React.FC = () => {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     const targetPath = user?.role === 'student' ? '/upload-documents' : '/documents';
-                                    navigate(`${targetPath} ? highlight = ${docMap.get(lowerPart)}`);
+                                    navigate(`${targetPath}?highlight=${docMap.get(lowerPart)}`);
                                 }}
                                 title="Go to Document"
                             >
@@ -714,13 +721,18 @@ export const Messages: React.FC = () => {
                                                 )}
                                                 <div className={`rounded-2xl px-4 py-2 break-words overflow-hidden ${isOwn ? 'bg-green-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'} `}>
                                                     {message.image && (
-                                                        <div className="mb-2 -mx-2 mt-[-4px]">
+                                                        <div className="mb-2 -mx-2 mt-[-4px] relative">
                                                             <img
                                                                 src={message.image}
                                                                 alt="Attached"
-                                                                className="w-full rounded-lg max-h-60 object-cover bg-black/5 cursor-pointer hover:opacity-95 transition-opacity"
-                                                                onClick={() => setSelectedImage(message.image || null)}
+                                                                className={`w-full rounded-lg max-h-60 object-cover bg-black/5 cursor-pointer hover:opacity-95 transition-all ${message.isSending ? 'blur-sm brightness-90' : ''}`}
+                                                                onClick={() => !message.isSending && setSelectedImage(message.image || null)}
                                                             />
+                                                            {message.isSending && (
+                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                    <Loader2 className="animate-spin text-white drop-shadow-md" size={24} />
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
 
