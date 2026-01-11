@@ -7,6 +7,7 @@ import { upload } from "../middleware/multer";
 import { UseMiddleware } from "../middleware/useMiddleware";
 import { CloudinaryService } from "../services/cloudinaryService";
 import { UserService } from "../services/userService";
+import { EmailService } from "../services/emailService";
 
 interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
@@ -17,16 +18,37 @@ interface AuthenticatedRequest extends Request {
 export class UserController {
   private userService: UserService;
   private cloudinaryService: CloudinaryService;
+  private emailService: EmailService;
 
   constructor() {
     this.userService = new UserService();
     this.cloudinaryService = new CloudinaryService();
+    this.emailService = new EmailService();
   }
 
   @route.post("/")
   createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = await this.userService.createUser(req.body);
+      await requireAuthentication(req, res);
+
+      // Capture raw password before it gets hashed by userService
+      const rawPassword = req.body.password;
+
+      const user = await this.userService.createUser(req.body, (req as AuthenticatedRequest).user);
+
+      // Send account creation email (if not student registering themselves self-service, usually admin/coordinator creates)
+      if (req.body.email && rawPassword) {
+        // Run in background to not block response
+        this.emailService.sendAccountCreatedNotification(
+          req.body.email,
+          req.body.userName,
+          rawPassword,
+          req.body.role,
+          req.body.firstName,
+          req.body.lastName
+        ).catch(err => console.error("Failed to send account creation email:", err));
+      }
+
       res.json(user);
     } catch (error) {
       next(error);
@@ -49,7 +71,7 @@ export class UserController {
       // Require authentication for this endpoint
       await requireAuthentication(req, res);
 
-      const users = await this.userService.getUsers();
+      const users = await this.userService.getUsers((req as AuthenticatedRequest).user);
       res.json(users);
     } catch (error) {
       next(error);
@@ -61,6 +83,41 @@ export class UserController {
     try {
       // Require authentication for this endpoint
       await requireAuthentication(req, res);
+
+      const userId = (req as AuthenticatedRequest).user?.id;
+      if (!userId) {
+        throw new AppError("Authentication required", 401);
+      }
+
+      // Check if username is being updated
+      if (req.body.userName) {
+        const { comparePasswords } = await import("../helpers/auth");
+        const currentUser = await this.userService.getUser(userId);
+
+        if (currentUser && currentUser.userName !== req.body.userName) {
+          // Username is changing, require password
+          if (!req.body.currentPassword) {
+            throw new AppError("Current password is required to change username", 400);
+          }
+
+          const isPasswordValid = await comparePasswords(req.body.currentPassword, currentUser.password);
+          if (!isPasswordValid) {
+            throw new AppError("Invalid current password", 401);
+          }
+
+          // Check for 30-day limit
+          if (currentUser.lastUsernameChangeDate) {
+            const daysSinceLastChange = (Date.now() - new Date(currentUser.lastUsernameChangeDate).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceLastChange < 30) {
+              const daysRemaining = Math.ceil(30 - daysSinceLastChange);
+              throw new AppError(`You can only change your username once every 30 days. Please try again in ${daysRemaining} days.`, 403);
+            }
+          }
+
+          // Update the last change date
+          req.body.lastUsernameChangeDate = new Date();
+        }
+      }
 
       const user = await this.userService.updateUser(req.body);
       res.json(user);
@@ -82,6 +139,33 @@ export class UserController {
     }
   };
 
+  @route.delete("/:id/permanent")
+  permanentDelete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      // Require authentication for this endpoint
+      await requireAuthentication(req, res);
+
+      // Verify the user is deleting themselves OR is an admin?
+      // Requirement: "make it permanently delete when deleting account using admin"
+      // If the authenticated user is an admin, they can do this.
+      // If the authenticated user is deleting their OWN account, they can do this.
+      const requestingUser = (req as AuthenticatedRequest).user;
+      if (!requestingUser) {
+        throw new AppError("Authentication required", 401);
+      }
+
+      // Allow if admin or if deleting self
+      if (requestingUser.role !== 'admin' && requestingUser.id !== req.params.id) {
+        throw new AppError("Unauthorized to permanently delete this user", 403);
+      }
+
+      await this.userService.permanentDeleteUser(req.params.id);
+      res.send("User permanently deleted successfully");
+    } catch (error) {
+      next(error);
+    }
+  };
+
   @route.post("/search")
   search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -89,9 +173,13 @@ export class UserController {
       await requireAuthentication(req, res);
 
       console.log("User search query received:", req.body);
-      const users = await this.userService.searchUser(req.body, {
-        multiple: true,
-      });
+      const users = await this.userService.searchUser(
+        req.body,
+        {
+          multiple: true,
+        },
+        (req as AuthenticatedRequest).user
+      );
       console.log("Users found:", Array.isArray(users) ? users.length : 1, "users");
       res.json(users);
     } catch (error) {

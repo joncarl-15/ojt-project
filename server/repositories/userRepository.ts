@@ -9,9 +9,11 @@ export class UserRepository {
     return User.findById(id);
   }
 
-  // This method returns all the user in the database.
-  async getUsers(): Promise<UserModel[]> {
-    return await User.find().populate([
+  // This method returns all the user in the database (excluding archived).
+  async getUsers(query: FilterQuery<UserModel> = {}): Promise<UserModel[]> {
+    // Merge explicit query with archive filter
+    const finalQuery = { ...query, isArchived: { $ne: true } };
+    return await User.find(finalQuery).populate([
       { path: "metadata.company" },
       { path: "metadata.coordinator" },
     ]);
@@ -27,9 +29,63 @@ export class UserRepository {
     return User.findByIdAndUpdate(id, userData, { new: true });
   }
 
-  // This method deletes a user from the database.
+  // This method soft deletes a user from the database.
   async deleteUser(id: string): Promise<UserModel | null> {
+    const user = await User.findById(id);
+    if (!user) return null;
+
+    return User.findByIdAndUpdate(
+      id,
+      {
+        isArchived: true,
+        archivedAt: new Date(),
+        // Mangle email and username to free them up for reuse
+        email: `${user.email}.archived.${Date.now()}`,
+        userName: `${user.userName}.archived.${Date.now()}`
+      },
+      { new: true }
+    );
+  }
+
+  // Restore an archived user
+  async restoreUser(id: string): Promise<UserModel | null> {
+    const user = await User.findById(id);
+    if (!user) return null;
+
+    // Try to restore original email/username by stripping the suffix
+    const originalEmail = user.email.split('.archived.')[0];
+    const originalUserName = user.userName.split('.archived.')[0];
+
+    // Check if original email is taken (by an active user)
+    const emailTaken = await User.findOne({ email: originalEmail, isArchived: { $ne: true } });
+
+    // If taken, we can't fully restore the email, we might need to keep it mangled or throw error.
+    // Ideally we should probably throw an error if we can't restore? 
+    // Or just restore as archived? No, restore means make active.
+    // Let's just restore the flags for now and let the user manually fix the email if they want, 
+    // OR we can try to restore if not taken.
+
+    const updateData: any = { isArchived: false, archivedAt: null };
+    if (!emailTaken) {
+      updateData.email = originalEmail;
+      updateData.userName = originalUserName;
+    }
+
+    return User.findByIdAndUpdate(id, updateData, { new: true });
+  }
+
+  // Permanently delete a user
+  async permanentDeleteUser(id: string): Promise<UserModel | null> {
     return User.findByIdAndDelete(id);
+  }
+
+  // Get archived users with optional filter
+  async getArchivedUsers(filter: FilterQuery<UserModel> = {}): Promise<UserModel[]> {
+    const query = { ...filter, isArchived: true };
+    return await User.find(query).populate([
+      { path: "metadata.company" },
+      { path: "metadata.coordinator" },
+    ]);
   }
 
   // This method searches for user(s) in the database that match the query object.
@@ -38,6 +94,11 @@ export class UserRepository {
     options?: { multiple?: boolean; populate?: boolean }
   ): Promise<UserModel | UserModel[] | null> {
     const { multiple = false, populate = false } = options || {};
+
+    // By default exclude archived users unless explicitly querying for them
+    if (query.isArchived === undefined) {
+      query.isArchived = { $ne: true };
+    }
 
     if (multiple) {
       const populateOptions = populate
@@ -83,8 +144,8 @@ export class UserRepository {
     return User.findOneAndUpdate(query, update, { new: true });
   }
 
-  async userDashboard(userId: string, userRole: string): Promise<any> {
-    return await User.aggregate([
+  async userDashboard(userId: string, userRole: string, program?: "bsit" | "bsba"): Promise<any> {
+    const dashboard = await User.aggregate([
       {
         $facet: {
           // For Student Dashboard
@@ -98,7 +159,7 @@ export class UserRepository {
             {
               $lookup: {
                 from: "announcements",
-                pipeline: [],
+                pipeline: [{ $sort: { createdAt: -1 } }, { $limit: 1 }],
                 as: "announcements",
               },
             },
@@ -140,11 +201,23 @@ export class UserRepository {
                 as: "announcements",
               },
             },
+            // Logic change: If program is provided, fetch ALL students of that program.
+            // If strictly "assigned students", we use metadata.coordinator match.
+            // User request: "coordinator can only view its assigned student like BSIT only"
+            // AND "when creating student... automatically create BSIT... automaticall create BSBA"
+            // This implies Coordinators MANAGE a program.
             {
               $lookup: {
                 from: "users",
-                localField: "_id",
-                foreignField: "metadata.coordinator",
+                pipeline: [
+                  {
+                    $match: {
+                      role: "student",
+                      isArchived: { $ne: true },
+                      ...(program ? { program: program } : { "metadata.coordinator": new mongoose.Types.ObjectId(userId) })
+                    }
+                  }
+                ],
                 as: "studentsHandled",
               },
             },
@@ -155,7 +228,8 @@ export class UserRepository {
                   {
                     $match: {
                       role: "student",
-                      "metadata.coordinator": new mongoose.Types.ObjectId(userId),
+                      isArchived: { $ne: true },
+                      ...(program ? { program: program } : { "metadata.coordinator": new mongoose.Types.ObjectId(userId) })
                     },
                   },
                   {
@@ -230,14 +304,14 @@ export class UserRepository {
             {
               $lookup: {
                 from: "users",
-                pipeline: [{ $match: { role: "student" } }],
+                pipeline: [{ $match: { role: "student", isArchived: { $ne: true } } }],
                 as: "allStudents",
               },
             },
             {
               $lookup: {
                 from: "users",
-                pipeline: [{ $match: { role: "coordinator" } }],
+                pipeline: [{ $match: { role: "coordinator", isArchived: { $ne: true } } }],
                 as: "allCoordinators",
               },
             },
@@ -302,5 +376,6 @@ export class UserRepository {
         $replaceRoot: { newRoot: "$dashboard" },
       },
     ]);
+    return dashboard;
   }
 }

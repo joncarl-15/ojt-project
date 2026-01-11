@@ -12,12 +12,13 @@ export class TaskRepository {
   async getTasks(): Promise<TaskModel[]> {
     return Task.find()
       .populate("createdBy", "firstName lastName email") // replace with the fields you want from User
-      .populate("assignedTo", "firstName lastName email program"); // include program field for filtering
+      .populate("assignedTo", "firstName lastName email program") // include program field for filtering
+      .populate("submissions.student", "firstName lastName email program avatar"); // Populate student info in submissions
   }
 
   // This method returns all tasks for a specific student.
   async getTasksByStudentId(studentId: string): Promise<TaskModel[]> {
-    return Task.find({ assignedTo: studentId });
+    return Task.find({ assignedTo: studentId }).populate("submissions.student", "firstName lastName email program avatar");
   }
 
   // This method creates a new task in the database.
@@ -40,13 +41,46 @@ export class TaskRepository {
     return Task.findOne(query);
   }
 
-  // This method adds file URLs to the task's documents array (prevents duplicates)
-  async addFilesToSubmissionProof(id: string, documents: string[]): Promise<TaskModel | null> {
-    return Task.findByIdAndUpdate(
-      id,
-      { $addToSet: { submissionProofUrl: { $each: documents } } },
-      { new: true }
-    );
+  // This method adds file URLs to the student's submission in the task (creates new or updates existing)
+  async addFilesToSubmissionProof(id: string, documents: string[], studentId?: string): Promise<TaskModel | null> {
+    if (!studentId) {
+      // Fallback for legacy behavior (or error out if strictly enforcing)
+      return Task.findByIdAndUpdate(
+        id,
+        { $addToSet: { submissionProofUrl: { $each: documents } } },
+        { new: true }
+      );
+    }
+
+    // Check if the student already has a submission entry
+    const task = await Task.findOne({ _id: id, "submissions.student": studentId });
+
+    if (task) {
+      // Update existing submission
+      return Task.findOneAndUpdate(
+        { _id: id, "submissions.student": studentId },
+        {
+          $addToSet: { "submissions.$.files": { $each: documents } },
+          $set: { "submissions.$.submittedAt": new Date() } // Update timestamp
+        },
+        { new: true }
+      );
+    } else {
+      // Create new submission entry
+      return Task.findByIdAndUpdate(
+        id,
+        {
+          $push: {
+            submissions: {
+              student: studentId,
+              files: documents,
+              submittedAt: new Date()
+            }
+          }
+        },
+        { new: true }
+      );
+    }
   }
 
   // This method removes specific file URLs from the task's documents array
@@ -73,5 +107,17 @@ export class TaskRepository {
     }
 
     return Task.findOneAndUpdate(query, update, { new: true });
+  }
+  async removeStudentFromTasks(studentId: string): Promise<void> {
+    // Remove from assignedTo array
+    await Task.updateMany(
+      { assignedTo: studentId },
+      { $pull: { assignedTo: studentId } }
+    );
+    // Remove from submissions array where student matches
+    await Task.updateMany(
+      { "submissions.student": studentId },
+      { $pull: { submissions: { student: studentId } } }
+    );
   }
 }

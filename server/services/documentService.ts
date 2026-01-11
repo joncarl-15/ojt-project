@@ -2,6 +2,7 @@ import { FilterQuery } from "mongoose";
 import { AppError } from "../middleware/errorHandler";
 import { DocumentsModel } from "../models/documentModel";
 import { DocumentsRepository } from "../repositories/documentRepository";
+import { TokenPayload } from "../helpers/interface";
 
 export class DocumentsService {
   private documentRepository: DocumentsRepository;
@@ -63,6 +64,30 @@ export class DocumentsService {
       throw new AppError("Document not found", 404);
     }
     return document;
+  }
+
+  async restoreDocument(id: string): Promise<DocumentsModel | null> {
+    const document = await this.documentRepository.restoreDocument(id);
+    if (!document) {
+      throw new AppError("Document not found", 404);
+    }
+    return document;
+  }
+
+  async permanentDeleteDocument(id: string): Promise<DocumentsModel | null> {
+    const document = await this.documentRepository.permanentDeleteDocument(id);
+    if (!document) {
+      throw new AppError("Document not found", 404);
+    }
+    return document;
+  }
+
+  async getArchivedDocuments(requestingUser?: TokenPayload): Promise<DocumentsModel[]> {
+    let program: string | undefined = undefined;
+    if (requestingUser?.role === 'coordinator' && requestingUser.program) {
+      program = requestingUser.program;
+    }
+    return this.documentRepository.getArchivedDocuments(program);
   }
 
   async addFilesToDocument(id: string, documents: string[]): Promise<DocumentsModel | null> {
@@ -141,6 +166,7 @@ export class DocumentsService {
     const updateData: Partial<DocumentsModel> = {
       status: "approved",
       remarks: remarks || "Document approved",
+      statusUpdatedAt: new Date(),
     };
 
     return await this.documentRepository.updateDocument(id, updateData);
@@ -164,6 +190,7 @@ export class DocumentsService {
     const updateData: Partial<DocumentsModel> = {
       status: "rejected",
       remarks: remarks.trim(),
+      statusUpdatedAt: new Date(),
     };
 
     return await this.documentRepository.updateDocument(id, updateData);

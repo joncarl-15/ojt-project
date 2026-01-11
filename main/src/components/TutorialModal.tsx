@@ -1,0 +1,179 @@
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+
+interface TutorialModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    userRole: string;
+}
+
+export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, userRole }) => {
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const [dontShowAgain, setDontShowAgain] = useState(false);
+
+    if (!isOpen) return null;
+
+    const getRoleContent = (role: string) => {
+        const content = {
+            student: {
+                title: 'Student',
+                command: "Slide the side panel to access all features. Dashboard, Messages, Tasks, and Documents are just a click away.",
+                connect: "Contact your coordinator directly regarding your internship concerns.",
+                tasks: "View and submit your assigned tasks on the go.",
+                docs: "Upload your requirements easily and receive email notifications upon submission."
+            },
+            coordinator: {
+                title: 'Coordinator',
+                command: "Your central hub. Post announcements to update everyone, track overall progress, and manage your students.",
+                connect: "Contact your students directly to monitor their progress and answer queries.",
+                tasks: "Take full control. Create detailed tasks, set requirements, and assign them to your students effortlessly.",
+                docs: "Streamline your workflow. Review student submissions and manage internship documents in one place."
+            },
+            admin: {
+                title: 'Admin',
+                command: "System Overview. Manage all Users, Companies, Program Requirements, and Monitor Enrollment status.",
+                tasks: "Oversee all task assignments and monitor completion rates across the program.",
+                docs: "Access and manage all system-wide documents and archive records for safeguards."
+            }
+        };
+        return content[role as keyof typeof content] || content.student;
+    };
+
+    const roleContent = getRoleContent(userRole);
+
+    const slides = [
+        {
+            title: `Hello ${roleContent.title}!`,
+            description: "Welcome to the OJT Monitoring System. Let's take a quick tour of your new workspace.",
+            emoji: "👋",
+            bgColor: "bg-green-50"
+        },
+        {
+            title: "Your Command Center",
+            description: roleContent.command,
+            emoji: "🎛️",
+            bgColor: "bg-gray-50"
+        },
+        {
+            title: "Stay Connected",
+            description: (roleContent as any).connect,
+            emoji: "💬",
+            bgColor: "bg-blue-50"
+        },
+        {
+            title: "Task Management",
+            description: roleContent.tasks,
+            emoji: "✅",
+            bgColor: "bg-green-50"
+        },
+        {
+            title: "Document Handling",
+            description: roleContent.docs,
+            emoji: "📂",
+            bgColor: "bg-orange-50"
+        }
+    ].filter(slide => slide.description);
+
+    const handleNext = () => {
+        if (currentSlide < slides.length - 1) {
+            setCurrentSlide(curr => curr + 1);
+        } else {
+            handleFinish();
+        }
+    };
+
+    const handlePrev = () => {
+        if (currentSlide > 0) {
+            setCurrentSlide(curr => curr - 1);
+        }
+    };
+
+    const handleFinish = () => {
+        if (dontShowAgain) {
+            localStorage.setItem('ojt_tutorial_seen_v1', 'true');
+        }
+        onClose();
+    };
+
+    const slide = slides[currentSlide];
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col relative animate-scale-in">
+
+                {/* Close Button (Skip) */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 bg-white/50 hover:bg-white/80 backdrop-blur-sm rounded-full transition-colors z-20"
+                >
+                    <X size={20} />
+                </button>
+
+                {/* Image or Icon Area - Full Bleed */}
+                <div className={`w-full aspect-[16/9] flex items-center justify-center relative overflow-hidden ${slide.bgColor || 'bg-gray-50'}`}>
+                    <div className="text-8xl animate-bounce drop-shadow-sm filter">
+                        {slide.emoji}
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 flex flex-col items-center text-center px-8 pt-6 pb-2 bg-white">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-3">{slide.title}</h2>
+                    <p className="text-gray-600 leading-relaxed max-w-sm">
+                        {slide.description}
+                    </p>
+                </div>
+
+                {/* Footer / Controls */}
+                <div className="p-6 bg-white">
+                    <div className="flex items-center justify-between mb-2">
+                        {/* Dots Indicator */}
+                        <div className="flex gap-2">
+                            {slides.map((_, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'bg-green-600 w-8' : 'bg-gray-200 w-2'}`}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Navigation Buttons */}
+                        <div className="flex gap-3">
+                            {currentSlide > 0 && (
+                                <button
+                                    onClick={handlePrev}
+                                    className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                            )}
+                            <button
+                                onClick={handleNext}
+                                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-medium flex items-center gap-2 shadow-lg shadow-green-600/20 active:scale-95"
+                            >
+                                {currentSlide === slides.length - 1 ? 'Get Started' : 'Next'}
+                                {currentSlide === slides.length - 1 ? <Check size={18} /> : <ChevronRight size={18} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Don't Show Again (Only on last slide) */}
+                    <div className={`mt-4 flex items-center justify-center gap-2 transition-opacity duration-300 ${currentSlide === slides.length - 1 ? 'opacity-100' : 'opacity-0 pointer-events-none h-0'}`}>
+                        <input
+                            type="checkbox"
+                            id="dontShow"
+                            checked={dontShowAgain}
+                            onChange={(e) => setDontShowAgain(e.target.checked)}
+                            className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                        />
+                        <label htmlFor="dontShow" className="text-xs text-gray-400 cursor-pointer select-none font-medium">
+                            Don't show this tutorial again
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};

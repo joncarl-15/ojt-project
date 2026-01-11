@@ -8,6 +8,13 @@ export interface TaskModel extends Document {
   assignedTo: Schema.Types.ObjectId;
   status: "pending" | "completed";
   submissionProofUrl: string[];
+  submissions: {
+    student: Schema.Types.ObjectId;
+    files: string[];
+    submittedAt: Date;
+  }[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const taskSchema = new Schema<TaskModel>(
@@ -40,8 +47,15 @@ const taskSchema = new Schema<TaskModel>(
     },
     submissionProofUrl: [
       {
-        type: String,
+        type: String, // Legacy support
         required: false,
+      },
+    ],
+    submissions: [
+      {
+        student: { type: Schema.Types.ObjectId, ref: "User" },
+        files: [String],
+        submittedAt: { type: Date, default: Date.now },
       },
     ],
   },

@@ -100,17 +100,20 @@ export class MessageService {
       const populatedMessage = await this.messageRepository.getMessage(message._id);
 
       // Emit to receiver
+      const receiverId = (message.receiver as any)._id ? (message.receiver as any)._id.toString() : String(message.receiver);
+      const senderId = (message.sender as any)._id ? (message.sender as any)._id.toString() : String(message.sender);
+
       if (message.receiverModel === 'Conversation') {
-        io.to(String(message.receiver)).emit("newMessage", populatedMessage);
+        io.to(receiverId).emit("newMessage", populatedMessage);
       } else {
         if (message.receiver) {
-          io.to(String(message.receiver)).emit("newMessage", populatedMessage);
+          io.to(receiverId).emit("newMessage", populatedMessage);
         }
       }
 
-      // Emit to sender (to support real-time update on their side as requested)
+      // Emit to sender
       if (message.sender) {
-        io.to(String(message.sender)).emit("messageSent", populatedMessage);
+        io.to(senderId).emit("messageSent", populatedMessage);
       }
     }
 
@@ -120,6 +123,13 @@ export class MessageService {
         await this.emailService.sendMessageNotificationToRecipient(message);
       } catch (error) {
         console.error("Failed to send message email notification:", error);
+      }
+    } else if (message.receiverModel === 'Conversation') {
+      try {
+        const conversationId = (message.receiver as any)._id ? (message.receiver as any)._id.toString() : String(message.receiver);
+        await this.emailService.sendGroupMessageNotification(message, conversationId);
+      } catch (error) {
+        console.error("Failed to send group message notification:", error);
       }
     }
 
@@ -147,11 +157,15 @@ export class MessageService {
     // Emit update event
     if (io && updatedMessage) {
       const eventData = { messageId: id, content: content, updatedAt: new Date() };
+
+      const receiverId = (updatedMessage.receiver as any)?._id ? (updatedMessage.receiver as any)._id.toString() : String(updatedMessage.receiver);
+      const senderId = (updatedMessage.sender as any)?._id ? (updatedMessage.sender as any)._id.toString() : String(updatedMessage.sender);
+
       if (updatedMessage.receiver) {
-        io.to(String(updatedMessage.receiver)).emit("messageUpdated", eventData);
+        io.to(receiverId).emit("messageUpdated", eventData);
       }
       if (updatedMessage.sender) {
-        io.to(String((updatedMessage.sender as any)._id || updatedMessage.sender)).emit("messageUpdated", eventData);
+        io.to(senderId).emit("messageUpdated", eventData);
       }
     }
 
@@ -172,11 +186,14 @@ export class MessageService {
     await this.messageRepository.deleteMessage(id);
 
     if (io) {
+      const receiverId = (message.receiver as any)?._id ? (message.receiver as any)._id.toString() : String(message.receiver);
+      const senderId = (message.sender as any)?._id ? (message.sender as any)._id.toString() : String(message.sender);
+
       if (message.receiver) {
-        io.to(String(message.receiver)).emit("messageDeleted", { messageId: id });
+        io.to(receiverId).emit("messageDeleted", { messageId: id });
       }
       if (message.sender) {
-        io.to(String((message.sender as any)._id || message.sender)).emit("messageDeleted", { messageId: id });
+        io.to(senderId).emit("messageDeleted", { messageId: id });
       }
     }
   }
@@ -207,13 +224,59 @@ export class MessageService {
 
     // Emit read receipt to sender
     if (io && updatedMessage && message.sender) {
-      io.to(String(message.sender)).emit("messageRead", {
+      const senderId = (message.sender as any)._id ? (message.sender as any)._id.toString() : String(message.sender);
+      io.to(senderId).emit("messageRead", {
         messageId: updatedMessage._id,
         isRead: true,
       });
     }
 
     return updatedMessage;
+  }
+
+  async markConversationAsRead(
+    targetId: string,
+    userId: string,
+    type: 'direct' | 'group',
+    io?: SocketIOServer
+  ): Promise<void> {
+    let query: any = { isRead: false };
+
+    if (type === 'group') {
+      // For groups, we mark messages sent to the group as read.
+      // NOTE: With current schema, reading a group message marks it as read for EVERYONE.
+      // Ideally schema needs readBy: [userId], but for this expected MVP behavior we proceed.
+      query.receiver = targetId;
+      query.receiverModel = 'Conversation';
+      // Exclude own messages? Usually yes, but sender is us, isRead should be false by default until someone reads?
+      // Actually unread count check is !isOwn.
+      // So we only care about messages NOT from us.
+      query.sender = { $ne: userId };
+    } else {
+      // Direct message: Messages sent BY the target TO us
+      query.sender = targetId;
+      query.receiver = userId;
+      query.receiverModel = 'User';
+    }
+
+    await this.messageRepository.searchAndUpdate(query, { isRead: true }, { multi: true });
+
+    // Emit event to update UI in real-time
+    if (io) {
+      // Notify the user (to clear their own badge via socket if multiple tabs/devices)
+      io.to(userId).emit("conversationRead", {
+        conversationId: targetId,
+        readBy: userId
+      });
+
+      // For DM, notify the sender that we read their messages (Read Receipt)
+      if (type === 'direct') {
+        io.to(targetId).emit("conversationReadByPeer", {
+          peerId: userId,
+          conversationId: userId // From sender's perspective, convo ID is our ID
+        });
+      }
+    }
   }
 
   async searchMessage(

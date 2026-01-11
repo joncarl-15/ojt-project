@@ -7,6 +7,9 @@ export interface DocumentsModel extends Document {
   status: "pending" | "approved" | "rejected";
   uploadedAt: Date;
   remarks: string;
+  isArchived: boolean;
+  archivedAt?: Date;
+  statusUpdatedAt?: Date;
 }
 
 const documentSchema = new Schema<DocumentsModel>({
@@ -36,6 +39,13 @@ const documentSchema = new Schema<DocumentsModel>({
   },
   remarks: {
     type: String,
+  },
+  isArchived: {
+    type: Boolean,
+    default: false,
+  },
+  archivedAt: {
+    type: Date,
   },
 });
 

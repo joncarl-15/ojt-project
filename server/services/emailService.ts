@@ -4,6 +4,7 @@ import { MessageRepository } from "../repositories/messageRepository";
 import { AnnouncementModel } from "../models/announcementModel";
 import { MessageModel } from "../models/messageModel";
 import { UserModel } from "../models/userModel";
+import { generateEmailHtml } from "../utils/emailTemplates";
 
 export class EmailService {
   private transporter: nodemailer.Transporter;
@@ -71,7 +72,32 @@ export class EmailService {
 
       // Prepare email content
       const emailSubject = `New Announcement: ${announcement.title}`;
-      const emailBody = this.generateAnnouncementEmailHTML(announcement, coordinator);
+
+      const emailBody = generateEmailHtml({
+        title: "New Announcement",
+        greeting: "Dear Student,",
+        mainContent: `
+          <p>Please be advised that a new announcement has been posted by your Coordinator, <strong>${coordinator.firstName} ${coordinator.lastName}</strong>.</p>
+          
+          <div class="card">
+            <div class="label">Subject</div>
+            <div class="value"><strong>${announcement.title}</strong></div>
+            
+            <div class="label">Date Posted</div>
+            <div class="value">${new Date((announcement as any).createdAt || Date.now()).toLocaleDateString()}</div>
+            
+            <div class="label">Content</div>
+            <div class="value">
+              <div class="message-box">
+                "${announcement.content}"
+              </div>
+            </div>
+          </div>
+          
+          <p>Please take note of this announcement.</p>
+        `,
+        // actionText and actionUrl removed
+      });
 
       // Send email to all recipients
       const mailOptions = {
@@ -127,7 +153,26 @@ export class EmailService {
 
       // Prepare email content
       const emailSubject = `New Message from ${sender.firstName} ${sender.lastName}`;
-      const emailBody = this.generateMessageEmailHTML(populatedMessage, sender, receiver);
+
+      const emailBody = generateEmailHtml({
+        title: "New Private Message",
+        greeting: "Dear Student,",
+        mainContent: `
+          <p>You have received a new private message from your Coordinator, <strong>${sender.firstName} ${sender.lastName}</strong>.</p>
+          
+          <div class="card">
+            <div class="label">Message Content</div>
+            <div class="value">
+              <div class="message-box">
+                "${message.content}"
+              </div>
+            </div>
+          </div>
+          
+          <p>Please log in to your dashboard to view and respond to this message.</p>
+        `,
+        // actionText and actionUrl removed
+      });
 
       // Send email to recipient
       const mailOptions = {
@@ -145,183 +190,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Generate HTML content for announcement notification email
-   * @param announcement - Announcement data
-   * @param coordinator - Coordinator who created the announcement
-   */
-  private generateAnnouncementEmailHTML(
-    announcement: AnnouncementModel,
-    coordinator: UserModel
-  ): string {
-    const formatDate = (date: Date | string | undefined) => {
-      if (!date) return "N/A";
-      return new Date(date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    };
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-      <meta charset="utf-8">
-      <title>New Announcement Notification</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .announcement-details { background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        .program-badge { 
-          display: inline-block; 
-          padding: 5px 10px; 
-          border-radius: 3px; 
-          color: white;
-          font-size: 12px;
-          text-transform: uppercase;
-          background-color: #2196F3;
-        }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-      </style>
-      </head>
-      <body>
-      <div class="container">
-        <div class="header">
-          <h1>📢 New Announcement</h1>
-        </div>
-        <div class="content">
-          <h2>Hello ${coordinator.program?.toUpperCase()} Student!</h2>
-          <p>Your coordinator has created a new announcement. Here are the details:</p>
-          
-          <div class="announcement-details">
-            <h3>${announcement.title}</h3>
-            <p><strong>📅 Created:</strong> ${formatDate((announcement as any).createdAt)}</p>
-            <p><strong>👨‍💼 From:</strong> ${coordinator.firstName} ${coordinator.lastName}</p>
-            <p><strong>🎓 Program:</strong> <span class="program-badge">${coordinator.program?.toUpperCase()}</span></p>
-            <div style="margin-top: 15px; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #4CAF50;">
-              <p><strong>📝 Content:</strong></p>
-              <p>${announcement.content}</p>
-            </div>
-          </div>
-          
-          <p>Please make sure to check the announcement details and take any necessary action.</p>
-        </div>
-        <div class="footer">
-          <p>This is an automated message from the OJT Monitoring System.</p>
-          <p>Please do not reply to this email.</p>
-        </div>
-      </div>
-      </body>
-      </html>
-    `;
-  }
-
-  /**
-   * Generate HTML content for message notification email
-   * @param message - Message data
-   * @param sender - User who sent the message
-   * @param receiver - User who received the message
-   */
-  private generateMessageEmailHTML(
-    message: MessageModel,
-    sender: UserModel,
-    receiver: UserModel
-  ): string {
-    const formatDate = (date: Date | string | undefined) => {
-      if (!date) return "N/A";
-      return new Date(date).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    };
-
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-      <meta charset="utf-8">
-      <title>New Message Notification</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #2196F3; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; background-color: #f9f9f9; }
-        .message-details { background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        .program-badge { 
-          display: inline-block; 
-          padding: 5px 10px; 
-          border-radius: 3px; 
-          color: white;
-          font-size: 12px;
-          text-transform: uppercase;
-          background-color: #FF9800;
-        }
-        .message-content {
-          background-color: #e3f2fd;
-          padding: 15px;
-          border-left: 4px solid #2196F3;
-          margin: 15px 0;
-        }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-        .action-button {
-          display: inline-block;
-          padding: 10px 20px;
-          background-color: #4CAF50;
-          color: white;
-          text-decoration: none;
-          border-radius: 5px;
-          margin: 10px 0;
-        }
-      </style>
-      </head>
-      <body>
-      <div class="container">
-        <div class="header">
-          <h1>💬 New Message</h1>
-        </div>
-        <div class="content">
-          <h2>Hello ${receiver.firstName}!</h2>
-          <p>You have received a new message from your coordinator:</p>
-          
-          <div class="message-details">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <div>
-                <p><strong>From:</strong> ${sender.firstName} ${sender.lastName}</p>
-                <p><strong>Program:</strong> <span class="program-badge">${sender.program?.toUpperCase()}</span></p>
-              </div>
-              <div style="text-align: right;">
-                <p><strong>📅 Sent:</strong> ${formatDate(message.sentAt)}</p>
-              </div>
-            </div>
-            
-            <div class="message-content">
-              <p>${message.content}</p>
-            </div>
-          </div>
-          
-          <p>Please log in to your account to view and respond to this message.</p>
-          
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/messages" class="action-button">
-              View Messages
-            </a>
-          </div>
-        </div>
-        <div class="footer">
-          <p>This is an automated message from the OJT Monitoring System.</p>
-          <p>Please do not reply to this email. Use the system's messaging feature to respond.</p>
-        </div>
-      </div>
-      </body>
-      </html>
-    `;
-  }
 
   /**
    * Verify email configuration
@@ -333,6 +201,291 @@ export class EmailService {
     } catch (error) {
       console.error("Email configuration verification failed:", error);
       return false;
+    }
+  }
+
+  /**
+   * Send password reset code
+   * @param email - Recipient email
+   * @param code - Reset code
+   */
+  async sendPasswordResetCode(email: string, code: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Password Reset Request - OJT Monitoring System",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #4CAF50;">Password Reset Request</h2>
+            <p>You have requested to reset your password. Use the following code to proceed:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; text-align: center; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #333;">
+              ${code}
+            </div>
+            <p style="margin-top: 20px;">If you did not request this, please ignore this email.</p>
+          </div>
+        `
+      };
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Password reset code sent to ${email}`);
+    } catch (error) {
+      console.error("Failed to send password reset email:", error);
+    }
+  }
+
+  /**
+   * Send notification for admin email change verification
+   * @param email - New email address
+   * @param code - Verification code
+   */
+  async sendEmailChangeVerificationCode(email: string, code: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Verify Email Change - OJT Monitoring System",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2196F3;">Verify Your New Email</h2>
+            <p>You have requested to change your admin account email to this address.</p>
+            <p>Please use the following verification code to confirm this change:</p>
+            <div style="background-color: #e3f2fd; padding: 15px; text-align: center; border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #1565C0;">
+              ${code}
+            </div>
+            <p style="margin-top: 20px;">If you did not initiate this request, please contact support immediately.</p>
+          </div>
+        `
+      };
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Email change verification code sent to ${email}`);
+    } catch (error) {
+      console.error("Failed to email change verification:", error);
+    }
+  }
+
+  /**
+   * Send account creation notification with credentials
+   */
+  async sendAccountCreatedNotification(email: string, userName: string, password: string, role: string, firstName: string, lastName: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Account Created - OJT Monitoring System",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #4CAF50;">Welcome to OJT Monitoring System!</h2>
+            <p>Hello ${firstName} ${lastName},</p>
+            <p>Your <strong>${role}</strong> account has been successfully created. Here are your login credentials:</p>
+            <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #4CAF50; border-radius: 3px; margin: 15px 0;">
+              <p style="margin: 5px 0;"><strong>Username:</strong> ${userName}</p>
+              <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
+            </div>
+            <p>Please log in immediately and change your password for security.</p>
+            <div style="text-align: center; margin-top: 25px;">
+               <!-- Button removed -->
+            </div>
+          </div>
+        `
+      };
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Account creation email sent to ${email}`);
+    } catch (error) {
+      console.error("Failed to send account creation email:", error);
+    }
+  }
+
+  /**
+   * Send task assignment notification
+   */
+  async sendTaskAssignmentNotification(email: string, title: string, description: string, dueDate: Date, assignerName: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "New Task Assignment - OJT Monitoring System",
+        html: generateEmailHtml({
+          title: "New Task Assignment",
+          greeting: "Dear Student,",
+          mainContent: `
+            <p>This is to inform you that a new task has been assigned to you by <strong>${assignerName}</strong>. Please see the details below:</p>
+            
+            <div class="card">
+              <div class="label">Task Title</div>
+              <div class="value"><strong>${title}</strong></div>
+              
+              <div class="label">Description</div>
+              <div class="value">${description}</div>
+              
+              <div class="label">Due Date</div>
+              <div class="value">${new Date(dueDate).toLocaleDateString()}</div>
+              
+              <div class="label">Assigned By</div>
+              <div class="value">${assignerName}</div>
+            </div>
+            
+            <p>Please log in to your dashboard to view the full details and submit your work.</p>
+          `,
+          // actionText and actionUrl removed
+        })
+      };
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error("Failed to send task assignment email:", error);
+    }
+  }
+
+  /**
+   * Send task status update (completion)
+   */
+  async sendTaskStatusUpdateNotification(email: string, title: string, status: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      const isCompleted = status === 'completed';
+      const subject = isCompleted ? `Task Approved - ${title}` : `Task Updated - ${title}`;
+      const statusText = isCompleted ? 'APPROVED' : status.toUpperCase();
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: subject,
+        html: generateEmailHtml({
+          title: subject,
+          greeting: "Dear Student,",
+          mainContent: `
+            <p>We would like to inform you that the status of your task <strong>"${title}"</strong> has been updated.</p>
+            
+            <div class="card">
+              <div class="label">Current Status</div>
+              <div class="value">
+                <span class="status-badge ${isCompleted ? 'status-success' : 'status-info'}">
+                  ${statusText}
+                </span>
+              </div>
+            </div>
+            
+            <p>Please keep up the good work.</p>
+          `,
+          // actionText and actionUrl removed
+        })
+      };
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error("Failed to send task status email:", error);
+    }
+  }
+
+  /**
+   * Send document status update (approved/rejected)
+   */
+  async sendDocumentStatusUpdateNotification(email: string, documentName: string, status: string, remarks?: string, reviewedBy?: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      const isApproved = status === 'approved';
+      const subject = isApproved ? `Document Approved - ${documentName}` : `Document Rejected - ${documentName}`;
+      const reviewerLabel = isApproved ? "Approved By" : "Rejected By";
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: subject,
+        html: generateEmailHtml({
+          title: subject,
+          greeting: "Dear Student,",
+          mainContent: `
+            <p>Please be advised that your document <strong>"${documentName}"</strong> has been <span class="status-badge ${isApproved ? 'status-success' : 'status-error'}">${status.toUpperCase()}</span> by <strong>${reviewedBy || 'Coordinator'}</strong>.</p>
+            
+            ${remarks || reviewedBy ? `
+              <div class="card">
+                ${reviewedBy ? `
+                  <div class="label">${reviewerLabel}</div>
+                  <div class="value">${reviewedBy}</div>
+                ` : ''}
+              </div>
+            ` : ''}
+            
+            <p>Please log in to the system to review details.</p>
+          `,
+          // actionText and actionUrl removed
+        })
+      };
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error("Failed to send document status email:", error);
+    }
+  }
+
+  /**
+   * Send notification for group chat message
+   */
+  async sendGroupMessageNotification(message: MessageModel, conversationId: string): Promise<void> {
+    if (!this.isConfigured) return;
+
+    try {
+      // Need to dynamically import to avoid circular dependency if possible, or just rely on models
+      const { Conversation } = await import("../models/conversationModel");
+      const conversation = await Conversation.findById(conversationId).populate('participants');
+
+      if (!conversation) return;
+
+      const sender = await this.userRepository.getUser(message.sender as any);
+      if (!sender || sender.role !== 'coordinator') return; // Only notify if sender is coordinator
+
+      const participants = conversation.participants as any as UserModel[];
+
+      // Filter students
+      const students = participants.filter(p => p.role === 'student' && p.email);
+
+      if (students.length === 0) return;
+
+      const emailRecipients = students.map(s => s.email);
+
+      // Prepare email content
+      const emailSubject = `New Group Message from ${sender.firstName} ${sender.lastName} `;
+
+      const emailBody = generateEmailHtml({
+        title: "New Group Message",
+        greeting: "Dear Student,",
+        mainContent: `
+          <p>Please be informed that your Coordinator, <strong>${sender.firstName} ${sender.lastName}</strong>, has sent a message to the group chat.</p>
+          
+          <div class="card">
+            <div class="label">Message Content</div>
+            <div class="value">
+              <div class="message-box">
+                "${message.content}"
+              </div>
+            </div>
+          </div>
+          
+          <p>Please log in to the OJT Monitoring System to reply.</p>
+        `,
+        // actionText and actionUrl removed
+      });
+
+      // Send email to all recipients
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        bcc: emailRecipients,
+        subject: emailSubject,
+        html: emailBody,
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Group message notification sent to ${emailRecipients.length} students`);
+
+    } catch (error) {
+      console.error("Failed to send group message notification:", error);
     }
   }
 }

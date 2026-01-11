@@ -4,14 +4,20 @@ import { AuthResponse, LoginCredentials, RegisterData, TokenPayload } from "../h
 import { AppError } from "../middleware/errorHandler";
 import { UserModel } from "../models/userModel";
 import { UserRepository } from "../repositories/userRepository";
+import { EmailService } from "./emailService";
 import { hashPassword, generateTokens, sanitizeUser, comparePasswords } from "../helpers/auth";
 
 // Purpose: This service class is responsible for handling authentication-related business logic including user registration, login, token generation, and password management.
 export class AuthService {
   private userRepository: UserRepository;
+  private emailService: EmailService;
+  // Use a simple in-memory store for OTPs for this MVP. In production, use Redis.
+  // Key: email, Value: { code: string, expires: number }
+  private static otpStore: Map<string, { code: string; expires: number }> = new Map();
 
   constructor() {
     this.userRepository = new UserRepository();
+    this.emailService = new EmailService();
   }
 
   /**
@@ -62,6 +68,7 @@ export class AuthService {
       id: newUser._id.toString(),
       email: newUser.email,
       firstName: newUser.firstName,
+      lastName: newUser.lastName,
       role: newUser.role,
       program: newUser.program,
     });
@@ -106,7 +113,7 @@ export class AuthService {
     }
 
     // Find user
-    const user = await this.userRepository.searchAndUpdate({ userName: userName });
+    const user = await this.userRepository.searchUser({ userName: userName }) as UserModel | null;
     if (!user) {
       throw new AppError("Invalid userName or password", 401);
     }
@@ -127,6 +134,7 @@ export class AuthService {
       id: user._id.toString(),
       email: user.email,
       firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role,
       program: user.program,
     });
@@ -159,6 +167,7 @@ export class AuthService {
         id: user._id.toString(),
         email: user.email,
         firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
         program: user.program,
       });
@@ -230,5 +239,138 @@ export class AuthService {
     }
 
     return await sanitizeUser(user);
+  }
+
+  /**
+   * Request password reset
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.userRepository.searchUser({ email });
+    if (!user) {
+      throw new AppError("User with this email does not exist", 404);
+    }
+
+    // Generate 6 digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store code with 10 min expiration
+    AuthService.otpStore.set(email.toLowerCase(), {
+      code,
+      expires: Date.now() + 10 * 60 * 1000
+    });
+    // console.log(`Debug: OTP stored for ${email.toLowerCase()}: ${code}`);
+
+    await this.emailService.sendPasswordResetCode(email, code);
+  }
+
+  /**
+   * Verify reset code
+   */
+  async verifyResetCode(email: string, code: string): Promise<boolean> {
+    const normalizedEmail = email.toLowerCase();
+    const storedOtp = AuthService.otpStore.get(normalizedEmail);
+
+    // console.log(`Debug: Verifying OTP for ${normalizedEmail}. Input Code: ${code}. Stored:`, storedOtp);
+    // console.log(`Debug: Current Store Keys:`, [...AuthService.otpStore.keys()]);
+
+    if (!storedOtp) return false;
+
+    if (Date.now() > storedOtp.expires) {
+      AuthService.otpStore.delete(normalizedEmail);
+      return false;
+    }
+
+    if (storedOtp.code !== code) return false;
+
+    return true;
+  }
+
+  /**
+   * Reset password
+   */
+  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    const isValid = await this.verifyResetCode(email, code);
+    if (!isValid) {
+      throw new AppError("Invalid or expired reset code", 400);
+    }
+
+    const user = await this.userRepository.searchUser({ email });
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    // Ensure user is not an array (though searchUser returns single object with default options, type definition might be ambiguous)
+    const userToUpdate = Array.isArray(user) ? user[0] : user;
+    await this.userRepository.updateUser(userToUpdate._id, { password: hashedPassword });
+
+    // Clear OTP
+    AuthService.otpStore.delete(email.toLowerCase());
+  }
+
+  /**
+   * Request email change (Admin only)
+   */
+  async requestEmailChange(userId: string, currentPassword: string, newEmail: string): Promise<void> {
+    const user = await this.userRepository.getUser(userId);
+    if (!user || user.role !== 'admin') {
+      throw new AppError("Unauthorized or user not found", 403);
+    }
+
+    // Verify current password
+    const isPasswordValid = await comparePasswords(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new AppError("Invalid password", 401);
+    }
+
+    // Check if new email is already taken
+    const existingUser = await this.userRepository.searchUser({ email: newEmail });
+    if (existingUser) {
+      throw new AppError("Email is already in use", 400);
+    }
+
+    // Generate code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP for the NEW email (as key) but we also need to know who requested it...
+    // Or stick to userID? But `verifyEmailChange` takes newEmail and code.
+    // Let's store by userId to be safe, or composite key?
+    // Actually, storing by userId is safer to prevent conflict if multiple admins try to switch to same email (edge case).
+    // Key: `email_change_${userId}`
+
+    AuthService.otpStore.set(`email_change_${userId}`, {
+      code,
+      expires: Date.now() + 10 * 60 * 1000
+    });
+
+    // Send code to NEW email so we verify they have access to it
+    await this.emailService.sendEmailChangeVerificationCode(newEmail, code);
+  }
+
+  /**
+   * Verify and update email
+   */
+  async verifyEmailChange(userId: string, newEmail: string, code: string): Promise<void> {
+    const key = `email_change_${userId}`;
+    const storedOtp = AuthService.otpStore.get(key);
+
+    if (!storedOtp) {
+      throw new AppError("No pending email change request or request expired", 400);
+    }
+
+    if (Date.now() > storedOtp.expires) {
+      AuthService.otpStore.delete(key);
+      throw new AppError("Verification code expired", 400);
+    }
+
+    if (storedOtp.code !== code) {
+      throw new AppError("Invalid verification code", 400);
+    }
+
+    // Update email
+    await this.userRepository.updateUser(userId, { email: newEmail });
+
+    // Clear OTP
+    AuthService.otpStore.delete(key);
   }
 }

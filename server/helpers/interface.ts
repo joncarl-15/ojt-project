@@ -21,6 +21,7 @@ export interface TokenPayload {
   id: string;
   email: string;
   firstName: string;
+  lastName: string;
   role?: "admin" | "coordinator" | "student";
   program?: "bsit" | "bsba";
 }

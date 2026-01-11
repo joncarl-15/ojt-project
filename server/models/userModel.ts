@@ -17,6 +17,9 @@ export interface UserModel extends Document {
     deploymentDate?: Date;
     status?: "scheduled" | "deployed" | "completed";
   };
+  isArchived: boolean;
+  archivedAt?: Date;
+  lastUsernameChangeDate?: Date;
 }
 
 const UserSchema = new Schema<UserModel>(
@@ -39,7 +42,7 @@ const UserSchema = new Schema<UserModel>(
     email: {
       type: String,
       required: true,
-      unique: true,
+      // unique: true, // Moved to index definition below to support partial index
     },
     password: {
       type: String,
@@ -77,8 +80,24 @@ const UserSchema = new Schema<UserModel>(
         default: "scheduled",
       },
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+    archivedAt: {
+      type: Date,
+    },
+    lastUsernameChangeDate: {
+      type: Date,
+    },
   },
   { timestamps: true }
+);
+
+// Add partial unique index for email where isArchived is false (or undefined)
+UserSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { isArchived: { $ne: true } } }
 );
 
 export const User = mongoose.model<UserModel>("User", UserSchema);

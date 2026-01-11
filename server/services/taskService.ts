@@ -65,7 +65,7 @@ export class TaskService {
     return task;
   }
 
-  async addFilesToSubmissionProof(id: string, documents: string[]): Promise<TaskModel | null> {
+  async addFilesToSubmissionProof(id: string, documents: string[], studentId?: string): Promise<TaskModel | null> {
     if (!id) {
       throw new AppError("Task ID is required", 400);
     }
@@ -79,7 +79,7 @@ export class TaskService {
       throw new AppError("Task not found", 404);
     }
 
-    return await this.taskRepository.addFilesToSubmissionProof(id, documents);
+    return await this.taskRepository.addFilesToSubmissionProof(id, documents, studentId);
   }
 
   async removeFilesToSubmissionProof(id: string, documents: string[]): Promise<TaskModel | null> {

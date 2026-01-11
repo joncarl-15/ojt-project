@@ -69,4 +69,10 @@ export class MessageRepository {
       .populate("receiver")
       .exec();
   }
+  async deleteMessagesByUserId(userId: string): Promise<{ deletedCount: number }> {
+    const result = await Message.deleteMany({
+      $or: [{ sender: userId }, { receiver: userId }],
+    });
+    return { deletedCount: result.deletedCount };
+  }
 }

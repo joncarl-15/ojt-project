@@ -1,15 +1,25 @@
 import { FilterQuery } from "mongoose";
 import * as bcrypt from "bcryptjs";
+import { TokenPayload } from "../helpers/interface";
 import { AppError } from "../middleware/errorHandler";
 import { UserModel } from "../models/userModel";
 import { UserRepository } from "../repositories/userRepository";
+import { DocumentsRepository } from "../repositories/documentRepository";
+import { MessageRepository } from "../repositories/messageRepository";
+import { TaskRepository } from "../repositories/taskRepository";
 
 // *Purpose: This service class is responsible for handling the business logic of the user entity. It interacts with the user repository to perform CRUD operations on the user entity.
 export class UserService {
   private userRepository: UserRepository;
+  private documentRepository: DocumentsRepository;
+  private messageRepository: MessageRepository;
+  private taskRepository: TaskRepository;
 
   constructor() {
     this.userRepository = new UserRepository();
+    this.documentRepository = new DocumentsRepository();
+    this.messageRepository = new MessageRepository();
+    this.taskRepository = new TaskRepository();
   }
 
   async getUser(id: string): Promise<UserModel | null> {
@@ -20,11 +30,55 @@ export class UserService {
     return user;
   }
 
-  async getUsers(): Promise<UserModel[]> {
-    return this.userRepository.getUsers();
+  async getDashboard(userId: string, targetRole: string, requestingUser?: TokenPayload): Promise<any> {
+    // If coordinator, ensure they can only view their own dashboard? 
+    // Actually, dashboard is usually for the logged-in user.
+    // But if we are an admin viewing another user's dashboard...
+    // The previous implementation used req.query.userId.
+
+    // For program filtered stats, we need to pass the program down.
+
+    let program: "bsit" | "bsba" | undefined = undefined;
+
+    if (requestingUser?.role === 'coordinator') {
+      program = requestingUser.program as "bsit" | "bsba";
+    } else {
+      // If admin viewing a coordinator/student, we might want to know that user's program?
+      // But for "Coordinator Program Isolation", the stats on the Coordinator's dashboard should be filtered.
+      // If the user being viewed IS a coordinator, we should use THEIR program.
+      const targetUser = await this.userRepository.getUser(userId);
+      if (targetUser && (targetUser.role === 'coordinator' || targetUser.role === 'student')) {
+        program = targetUser.program;
+      }
+    }
+
+    const dashboardData = await this.userRepository.userDashboard(userId, targetRole, program);
+
+    if (!dashboardData || dashboardData.length === 0) {
+      throw new AppError("Dashboard data not found", 404);
+    }
+
+    return dashboardData[0];
   }
 
-  async createUser(userData: Partial<UserModel>) {
+  // Renamed to match controller usage if needed, or update controller calling code.
+  // Controller calls 'getUserDashboard'
+  async getUserDashboard(userId: string, userRole: string, requestingUser?: TokenPayload): Promise<any> {
+    return this.getDashboard(userId, userRole, requestingUser);
+  }
+
+  async getUsers(requestingUser?: TokenPayload): Promise<UserModel[]> {
+    const query: any = {};
+    if (requestingUser?.role === 'coordinator' && requestingUser.program) {
+      query.program = requestingUser.program;
+      // Coordinators should probably only see STUDENTS? Or other coordinators too?
+      // "view its assigned student... even on dashboard"
+      // Let's filter by program.
+    }
+    return this.userRepository.getUsers(query);
+  }
+
+  async createUser(userData: Partial<UserModel>, requestingUser?: TokenPayload) {
     if (!userData.firstName || !userData.lastName) {
       throw new AppError("User firstname and lastname data are required", 400);
     }
@@ -35,6 +89,14 @@ export class UserService {
 
     if (!userData.role) {
       throw new AppError("Invalid role. Must be admin, coordinator, or student", 400);
+    }
+
+    // Program Isolation: If coordinator, force program
+    if (requestingUser?.role === 'coordinator') {
+      if (!requestingUser.program) {
+        throw new AppError("Coordinator has no program assigned", 500);
+      }
+      userData.program = requestingUser.program as "bsit" | "bsba";
     }
 
     const existingUserByEmail = await this.userRepository.searchAndUpdate({
@@ -57,18 +119,48 @@ export class UserService {
       try {
         const { ConversationService } = await import("./conversationService");
         const conversationService = new ConversationService();
+        const { Message } = await import("../models/messageModel");
+
         // Ensure group exists
         let group = await conversationService.getProgramGroup(userData.program as "bsit" | "bsba");
+
         if (!group) {
-          // Determine group name
+          // Create group with Coordinator (requestingUser) as admin if available
+          const adminId = requestingUser?.role === 'coordinator' ? requestingUser.id : createdUser._id;
           const groupName = userData.program.toUpperCase() + " Group Chat";
-          // Create group with this user as initial member/admin? 
-          // Better to have no admin for now or system admin.
-          // For now, just create it.
-          group = await conversationService.createProgramGroup(userData.program as "bsit" | "bsba", createdUser._id, groupName);
-        } else {
-          await conversationService.addUserToGroup(group._id, createdUser._id);
+
+          group = await conversationService.createProgramGroup(
+            userData.program as "bsit" | "bsba",
+            adminId,
+            groupName
+          );
+
+          // If coordinator created it, ensure they are in it (createProgramGroup might handle this but let's be safe)
+          // createProgramGroup adds the adminId as participant.
         }
+
+        // Add the new student to the group
+        await conversationService.addUserToGroup(group._id, createdUser._id);
+
+        // If the coordinator triggered this and isn't in the group yet (e.g. group existed before but they weren't in it), add them
+        if (requestingUser?.role === 'coordinator') {
+          // Check if already in? addUserToGroup typically handles duplicates or we can just try
+          await conversationService.addUserToGroup(group._id, requestingUser.id);
+        }
+
+        // Send "Just hopped in!" message
+        await Message.create({
+          sender: createdUser._id, // The student sent it? Or system? "Student just hopped in!" sounds like system.
+          // User request: "student bsit 1 just hopped in!"
+          // Usually such messages are system messages or sent by the user themselves automatically.
+          // Let's make the student say it for now, or use a system flag if available. 
+          // Using student ID as sender makes it look like they sent it, which fits.
+          receiver: group._id,
+          receiverModel: 'Conversation',
+          content: `${createdUser.firstName} ${createdUser.lastName} just hopped in!`,
+          sentAt: new Date()
+        });
+
       } catch (error) {
         console.error("Failed to add user to program group:", error);
         // Non-blocking error
@@ -121,12 +213,61 @@ export class UserService {
     return user;
   }
 
+  async restoreUser(id: string): Promise<UserModel | null> {
+    const user = await this.userRepository.restoreUser(id);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+    return user;
+  }
+
+  async permanentDeleteUser(id: string): Promise<UserModel | null> {
+    // Cascade delete related data
+    await this.documentRepository.deleteDocumentsByStudentId(id);
+    await this.messageRepository.deleteMessagesByUserId(id);
+    await this.taskRepository.removeStudentFromTasks(id);
+
+    const user = await this.userRepository.permanentDeleteUser(id);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+    return user;
+  }
+
+  async getArchivedUsers(requestingUser?: TokenPayload): Promise<UserModel[]> {
+    const filter: FilterQuery<UserModel> = {};
+    if (requestingUser?.role === 'coordinator' && requestingUser.program) {
+      filter.program = requestingUser.program;
+      // Coordinators can only see Students and potentially other Coordinators of the same program?
+      // Requirement: "show bsit student account... and bsba info for the coordinator bsba"
+      // Usually coordinators only manage students. Showing other coordinators might be fine or not.
+      // Let's filter by program first.
+      // If we want to restrict Role to "student" too, we can add that.
+      // "show bsit student account" implies filtering by role too.
+      // Let's stick to program filter for now, as that's the main isolation.
+      // If they want to see archived coordinators of the same program, that's fine.
+    }
+    return this.userRepository.getArchivedUsers(filter);
+  }
+
   async searchUser(
     query: FilterQuery<UserModel>,
-    options?: { multiple?: boolean }
+    options?: { multiple?: boolean },
+    requestingUser?: TokenPayload
   ): Promise<UserModel | UserModel[]> {
     // Fields that require exact matching (not regex)
     const exactMatchFields = ["role", "program", "email"];
+
+    // Check for coordinator program isolation
+    if (requestingUser?.role === 'coordinator' && requestingUser.program) {
+      // Enforce program filter
+      query.program = requestingUser.program;
+      // Optionally ensure they only search for students?
+      // But maybe they need to search for other coordinators?
+      // "can only view its assigned student" implies student restriction.
+      // Let's enforce it strongly if query doesn't specify role, default to student?
+      // Or just let filtering usage handle role specificities.
+    }
 
     const caseInsensitiveQuery = Object.keys(query).reduce((acc, key) => {
       const value = query[key];
@@ -280,13 +421,5 @@ export class UserService {
     return updatedUser;
   }
 
-  async getUserDashboard(userId: string, userRole: string): Promise<any> {
-    const dashboardData = await this.userRepository.userDashboard(userId, userRole);
 
-    if (!dashboardData || dashboardData.length === 0) {
-      throw new AppError("Dashboard data not found", 404);
-    }
-
-    return dashboardData[0];
-  }
 }

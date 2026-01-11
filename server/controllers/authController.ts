@@ -138,4 +138,154 @@ export class AuthController {
       next(error);
     }
   };
+
+  @route.post("/forgot-password")
+  forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        throw new AppError("Email is required", 400);
+      }
+
+      await this.authService.requestPasswordReset(email);
+      res.json({
+        status: "success",
+        message: "Password reset code sent to your email",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  @route.post("/verify-reset-code")
+  verifyResetCode = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email, code } = req.body;
+      if (!email || !code) {
+        throw new AppError("Email and code are required", 400);
+      }
+
+      const isValid = await this.authService.verifyResetCode(email.trim(), code.trim());
+      if (!isValid) {
+        throw new AppError("Invalid or expired reset code", 400);
+      }
+
+      res.json({
+        status: "success",
+        message: "Code verified successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  @route.post("/reset-password")
+  resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email, code, newPassword } = req.body;
+      if (!email || !code || !newPassword) {
+        throw new AppError("Email, code, and new password are required", 400);
+      }
+
+      await this.authService.resetPassword(email.trim(), code.trim(), newPassword);
+      res.json({
+        status: "success",
+        message: "Password reset successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  @route.post("/change-email-request")
+  requestEmailChange = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { newEmail, currentPassword } = req.body;
+
+      const { requireAuthentication } = await import("../helpers/auth");
+      await requireAuthentication(req, res);
+
+      const userId = (req as any).user?.id;
+      const userRole = (req as any).user?.role;
+
+      if (!userId) {
+        throw new AppError("Authentication required", 401);
+      }
+
+      if (userRole !== 'admin') {
+        throw new AppError("Only admins can change their email via this process", 403);
+      }
+
+      if (!newEmail || !currentPassword) {
+        throw new AppError("New email and current password are required", 400);
+      }
+
+      await this.authService.requestEmailChange(userId, currentPassword, newEmail);
+      res.json({
+        status: "success",
+        message: "Verification code sent to new email",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  @route.post("/change-email-verify")
+  verifyEmailChange = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { requireAuthentication } = await import("../helpers/auth");
+      await requireAuthentication(req, res);
+
+      const { newEmail, code } = req.body;
+      const userId = (req as any).user?.id;
+      const userRole = (req as any).user?.role;
+
+      if (!userId) {
+        throw new AppError("Authentication required", 401);
+      }
+
+      if (userRole !== 'admin') {
+        throw new AppError("Unauthorized", 403);
+      }
+
+      if (!newEmail || !code) {
+        throw new AppError("New email and code are required", 400);
+      }
+
+      await this.authService.verifyEmailChange(userId, newEmail, code);
+      res.json({
+        status: "success",
+        message: "Email updated successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+  @route.post("/initiate-password-reset")
+  initiatePasswordReset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { requireAuthentication } = await import("../helpers/auth");
+      await requireAuthentication(req, res);
+
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        throw new AppError("Authentication required", 401);
+      }
+
+      // Fetch user email
+      const user = await this.authService.getProfile(userId);
+      if (!user || !user.email) {
+        throw new AppError("User email not found", 404);
+      }
+
+      await this.authService.requestPasswordReset(user.email);
+      res.json({
+        status: "success",
+        message: "Verification code sent to your email",
+        email: user.email // Return email so frontend knows where it went
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

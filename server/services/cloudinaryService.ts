@@ -7,11 +7,17 @@ export class CloudinaryService {
       const b64 = Buffer.from(file.buffer).toString("base64");
       const dataURI = `data:${file.mimetype};base64,${b64}`;
 
+      // Create a sanitized public ID from the original filename
+      const timestamp = Date.now();
+      const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.]/g, "_");
+      const publicId = `${timestamp}_${sanitizedName}`;
+
       const result = await cloudinary.uploader.upload(dataURI, {
         resource_type: "auto",
         folder: `ojt-assets/${folderName}`,
+        public_id: publicId,
         use_filename: true,
-        unique_filename: true,
+        unique_filename: false, // We handle uniqueness with timestamp
         overwrite: true,
       });
 

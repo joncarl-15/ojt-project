@@ -6,15 +6,21 @@ import { upload } from "../middleware/multer";
 import { UseMiddleware } from "../middleware/useMiddleware";
 import { CloudinaryService } from "../services/cloudinaryService";
 import { DocumentsService } from "../services/documentService";
+import { EmailService } from "../services/emailService";
+import { UserService } from "../services/userService";
 
 @route("/document")
 export class DocumentsController {
   private documentService: DocumentsService;
   private cloudinaryService: CloudinaryService;
+  private emailService: EmailService;
+  private userService: UserService;
 
   constructor() {
     this.documentService = new DocumentsService();
     this.cloudinaryService = new CloudinaryService();
+    this.emailService = new EmailService();
+    this.userService = new UserService();
   }
 
   @route.post("/")
@@ -183,13 +189,30 @@ export class DocumentsController {
       await requireAuthentication(req, res);
 
       // Check if user is coordinator
+      // Check if user is coordinator or admin
       const user = (req as any).user;
-      if (!user || user.role !== "coordinator") {
-        throw new AppError("Only coordinators can approve documents", 403);
+      if (!user || !["coordinator", "admin"].includes(user.role)) {
+        throw new AppError("Only coordinators or admins can approve documents", 403);
       }
 
       const { remarks } = req.body;
       const document = await this.documentService.approveDocument(req.params.id, remarks);
+
+      // Notify student
+      if (document && document.student) {
+        this.userService.getUser(document.student as any).then(user => {
+          if (user && user.email) {
+            this.emailService.sendDocumentStatusUpdateNotification(
+              user.email,
+              document.documentName,
+              "approved",
+              remarks,
+              `${(req as any).user.firstName} ${(req as any).user.lastName}`
+            ).catch(console.error);
+          }
+        }).catch(console.error);
+      }
+
       res.json({ message: "Document approved successfully", document });
     } catch (error) {
       next(error);
@@ -203,9 +226,10 @@ export class DocumentsController {
       await requireAuthentication(req, res);
 
       // Check if user is coordinator
+      // Check if user is coordinator or admin
       const user = (req as any).user;
-      if (!user || user.role !== "coordinator") {
-        throw new AppError("Only coordinators can disapprove documents", 403);
+      if (!user || !["coordinator", "admin"].includes(user.role)) {
+        throw new AppError("Only coordinators or admins can disapprove documents", 403);
       }
 
       const { remarks } = req.body;
@@ -214,6 +238,22 @@ export class DocumentsController {
       }
 
       const document = await this.documentService.disapproveDocument(req.params.id, remarks);
+
+      // Notify student
+      if (document && document.student) {
+        this.userService.getUser(document.student as any).then(user => {
+          if (user && user.email) {
+            this.emailService.sendDocumentStatusUpdateNotification(
+              user.email,
+              document.documentName,
+              "disapproved", // or 'rejected'
+              remarks,
+              `${(req as any).user.firstName} ${(req as any).user.lastName}`
+            ).catch(console.error);
+          }
+        }).catch(console.error);
+      }
+
       res.json({ message: "Document disapproved", document });
     } catch (error) {
       next(error);

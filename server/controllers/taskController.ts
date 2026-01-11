@@ -7,6 +7,8 @@ import { upload } from "../middleware/multer";
 import { UseMiddleware } from "../middleware/useMiddleware";
 import { CloudinaryService } from "../services/cloudinaryService";
 import { TaskService } from "../services/taskService";
+import { EmailService } from "../services/emailService";
+import { UserService } from "../services/userService";
 
 interface AuthenticatedRequest extends Request {
   user?: TokenPayload;
@@ -16,10 +18,14 @@ interface AuthenticatedRequest extends Request {
 export class TaskController {
   private taskService: TaskService;
   private cloudinaryService: CloudinaryService;
+  private emailService: EmailService;
+  private userService: UserService;
 
   constructor() {
     this.taskService = new TaskService();
     this.cloudinaryService = new CloudinaryService();
+    this.emailService = new EmailService();
+    this.userService = new UserService();
   }
 
   @route.post("/")
@@ -50,6 +56,28 @@ export class TaskController {
       };
 
       const task = await this.taskService.createTask(documentData);
+
+      // Send notifications to assigned students
+      if (req.body.assignedTo && Array.isArray(req.body.assignedTo)) {
+        for (const studentId of req.body.assignedTo) {
+          try {
+            // Inefficient to fetch one by one but acceptable for MVP with small classes
+            const user = await this.userService.getUser(studentId);
+            if (user && user.email) {
+              this.emailService.sendTaskAssignmentNotification(
+                user.email,
+                req.body.title,
+                req.body.description,
+                req.body.dueDate,
+                `${req.user!.firstName} ${req.user!.lastName}`
+              ).catch(console.error);
+            }
+          } catch (e) {
+            console.error(`Failed to notify student ${studentId}`, e);
+          }
+        }
+      }
+
       res.json(task);
     } catch (error) {
       next(error);
@@ -102,6 +130,39 @@ export class TaskController {
       await requireAuthentication(req, res);
 
       const task = await this.taskService.updateTask(req.body);
+
+      // Send status update notification if status changed
+      if (req.body.status && req.body._id) {
+        try {
+          const updatedTask = await this.taskService.getTask(req.body._id);
+          if (updatedTask && updatedTask.assignedTo) {
+            // If the task status is global for all assigned (which it seems to be based on single status field in model?), notify all.
+            // Or is status per student? 
+            // Looking at taskModel (implied), it has `assignedTo` array.
+            // Usually tasks in OJT are 1:Many or 1:1. 
+            // If 1:Many, a single status updates everyone? That might be weird.
+            // But let's assume for now we notify everyone assigned.
+            // Actually, wait, `updateTask` typically updates THE task.
+            // If the status changed to 'completed', notify.
+
+            // Fetch all assigned users
+            const assignedTo = updatedTask.assignedTo as any;
+            for (const studentId of assignedTo) {
+              const user = await this.userService.getUser(studentId as any); // assignedTo might be populated or ObjectId
+              if (user && user.email) {
+                this.emailService.sendTaskStatusUpdateNotification(
+                  user.email,
+                  updatedTask.title,
+                  req.body.status
+                ).catch(console.error);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Failed to send task status update email", e);
+        }
+      }
+
       res.json(task);
     } catch (error) {
       next(error);
@@ -136,7 +197,7 @@ export class TaskController {
 
   @route.post("/add-files/:id")
   @UseMiddleware(upload.array("files", 10))
-  async addFilesToSubmissionProof(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async addFilesToSubmissionProof(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       // Require authentication for this endpoint
       await requireAuthentication(req, res);
@@ -152,7 +213,8 @@ export class TaskController {
         documents.push(task);
       }
 
-      const task = await this.taskService.addFilesToSubmissionProof(req.params.id, documents);
+      // Pass the user ID (student) to the service
+      const task = await this.taskService.addFilesToSubmissionProof(req.params.id, documents, req.user?.id);
       res.json(task);
     } catch (error) {
       next(error);

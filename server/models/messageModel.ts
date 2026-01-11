@@ -8,6 +8,8 @@ export interface MessageModel extends Document {
   image?: string;
   isRead: Boolean;
   sentAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const MessageSchema = new Schema<MessageModel>(

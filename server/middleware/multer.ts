@@ -16,7 +16,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: Function) => {
     "text/plain",
     "image/jpeg",
     "image/png",
-    "application/xml", // <-- add this
+    "application/xml",
     "text/xml",
   ];
 

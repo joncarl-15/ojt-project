@@ -180,4 +180,24 @@ export class MessageController {
       next(error);
     }
   };
+
+  @route.patch("/conversation/:id/read")
+  markConversationAsRead = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await requireAuthentication(req, res);
+
+      const io = this.getSocketIO(req);
+      const { type = 'direct' } = req.body; // 'direct' or 'group'
+
+      await this.messageService.markConversationAsRead(req.params.id, req.user!.id, type, io);
+
+      res.json({ status: 'success' });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -7,22 +7,21 @@ export const config = {
   },
 
   DB: {
-    // Create you own mongodb URI from Atlas MongoDB and use it here.
-    URI: "mongodb+srv://ojtmonitoring:ojt1506@cluster0.txegvlu.mongodb.net/ojt-monitoring-system?retryWrites=true&w=majority&appName=Cluster0",
+    URI: process.env.MONGO_URI as string,
     ERROR: "Error connecting to database: ",
     NOT_INITIALIZED: "Database connection not initialized",
     CONNECTED: "Connected to database",
   },
 
   CLOUDINARY: {
-    CLOUD_NAME: "ojt-dev",
-    API_KEY: "955948597478288",
-    API_SECRET: "_c1SsqbbATpbO-hSRfB4eIeUXUo",
+    CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME as string,
+    API_KEY: process.env.CLOUDINARY_API_KEY as string,
+    API_SECRET: process.env.CLOUDINARY_API_SECRET as string,
   },
 
   JWT: {
-    SECRET: (process.env.JWT_SECRET as string) || "ojt-secret-key",
-    EXPIRES_IN: (process.env.JWT_EXPIRES_IN as string) || "7d",
-    REFRESH_EXPIRES_IN: (process.env.JWT_REFRESH_EXPIRES_IN as string) || "30d",
+    SECRET: process.env.JWT_SECRET as string,
+    EXPIRES_IN: process.env.JWT_EXPIRES_IN as string,
+    REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
   },
 };
