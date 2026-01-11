@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Card, CardBody, CardFooter } from '../components/Card';
 import { Mail, Lock, User } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 export const Register: React.FC = () => {
     const [formData, setFormData] = useState({
@@ -17,6 +18,8 @@ export const Register: React.FC = () => {
     });
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+    const { login } = useAuth();
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,17 +48,17 @@ export const Register: React.FC = () => {
                     userName: formData.userName,
                     email: formData.email,
                     password: formData.password,
-                    role: 'admin', // Hardcoded for this portal 
-                    // I'll leave it empty or send a dummy value if backend VALIDATES it.
-                    // Based on previous code, program is optional in userModel "?" so maybe undefined is fine.
-                    // But check Register.tsx: "program: formData.program" was sent.
+                    role: 'admin',
                 }),
             });
 
             const data = await response.json();
 
             if (response.ok && data.status === 'success') {
-                window.location.href = '/success';
+                // Login the user immediately separate from saving the token
+                // We use the data from the response to login
+                login(data.data.accessToken, data.data.user);
+                navigate('/success');
             } else {
                 setError(data.message || 'Registration failed');
             }
