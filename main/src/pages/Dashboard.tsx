@@ -5,7 +5,6 @@ import { Users, BookOpen, Building2, ClipboardList, User as UserIcon, LayoutDash
 import { Link } from 'react-router-dom';
 import { TutorialModal } from '../components/TutorialModal';
 import { API_BASE_URL } from '../config';
-import { Notifications } from '../components/Notifications';
 
 export const Dashboard: React.FC = () => {
     const { user, token } = useAuth();
@@ -132,71 +131,60 @@ export const Dashboard: React.FC = () => {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Message Alert - ONLY show if there are messages and NOT in the notifications list to avoid redundancy, 
-                        OR keep it as a high priority alert. Let's keep it but maybe rethink layout.
-                        Actually, let's put Notifications side-by-side with Announcements or stacked. 
-                    */}
-
-                    <div className="space-y-6">
-                        {/* Highlights / Important Alerts */}
-                        {newMessageCount > 0 && (
-                            <div className="bg-green-50 border border-green-100 rounded-xl p-6">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-start gap-4">
-                                        <div className="p-2.5 bg-green-100 text-green-600 rounded-xl">
-                                            <Users size={20} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-green-900 font-medium mb-1">New Messages</h4>
-                                            <p className="text-green-700 font-medium mb-1">You have {newMessageCount} unread messages</p>
-                                        </div>
+                <div className="space-y-6">
+                    {/* Message Alert */}
+                    {newMessageCount > 0 && (
+                        <div className="bg-green-50 border border-green-100 rounded-xl p-6">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-start gap-4">
+                                    <div className="p-2.5 bg-green-100 text-green-600 rounded-xl">
+                                        <Users size={20} />
                                     </div>
-                                    <Link to="/messages" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-colors">
-                                        View
-                                    </Link>
+                                    <div>
+                                        <h4 className="text-green-900 font-medium mb-1">New Messages</h4>
+                                        <p className="text-green-700 font-medium mb-1">You have {newMessageCount} unread messages</p>
+                                    </div>
                                 </div>
+                                <Link to="/messages" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-colors">
+                                    View
+                                </Link>
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        <Notifications />
-                    </div>
-
-                    <div className="space-y-4">
-                        <Card className="h-full">
-                            <CardHeader>
-                                <h3 className="text-lg font-bold text-gray-900">Announcements</h3>
-                            </CardHeader>
-                            <CardBody>
-                                <div className="space-y-4">
-                                    {announcements.length > 0 ? (
-                                        announcements.map((announcement) => (
-                                            <div key={announcement._id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="p-2 rounded-full bg-orange-100 text-orange-600">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                                                        </svg>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">{announcement.title}</p>
-                                                        <p className="text-xs text-gray-500 line-clamp-1">{announcement.content}</p>
-                                                    </div>
+                    <Card className="h-full">
+                        <CardHeader>
+                            <h3 className="text-lg font-bold text-gray-900">Announcements</h3>
+                        </CardHeader>
+                        <CardBody>
+                            <div className="space-y-4">
+                                {announcements.length > 0 ? (
+                                    announcements.map((announcement) => (
+                                        <div key={announcement._id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors border border-gray-100">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="p-2 rounded-full bg-orange-100 text-orange-600">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                                                    </svg>
                                                 </div>
-                                                <span className="text-xs text-gray-400 whitespace-nowrap">
-                                                    {new Date(announcement.createdAt).toLocaleDateString()}
-                                                </span>
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">{announcement.title}</p>
+                                                    <p className="text-xs text-gray-500 line-clamp-1">{announcement.content}</p>
+                                                </div>
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div className="text-center py-8 text-gray-500">
-                                            No announcements found
+                                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                                                {new Date(announcement.createdAt).toLocaleDateString()}
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500">
+                                        No announcements found
+                                    </div>
+                                )}
+                            </div>
+                        </CardBody>
+                    </Card>
                     <TutorialModal
                         isOpen={showTutorial}
                         onClose={() => setShowTutorial(false)}

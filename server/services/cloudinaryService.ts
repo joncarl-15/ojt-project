@@ -7,17 +7,32 @@ export class CloudinaryService {
       const b64 = Buffer.from(file.buffer).toString("base64");
       const dataURI = `data:${file.mimetype};base64,${b64}`;
 
-      // Create a sanitized public ID (remove extension as Cloudinary adds it in URL)
+      // Create a sanitized public ID
       const timestamp = Date.now();
-      const originalNameWithoutExt = file.originalname.replace(/\.[^/.]+$/, "");
-      const sanitizedName = originalNameWithoutExt.replace(/[^a-zA-Z0-9]/g, "_");
-      const publicId = `${timestamp}_${sanitizedName}`;
+      // Simple extension removal
+      const parts = file.originalname.split('.');
+      const ext = parts.length > 1 ? parts.pop() : '';
+      const nameWithoutExt = parts.join('.');
+      const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, "_");
+
+      // Determine resource type: 'image' for images, 'raw' for everything else (PDFs, docs, etc.)
+      const isImage = file.mimetype.startsWith('image/');
+      const resourceType = isImage ? 'image' : 'raw';
+
+      // For raw files, we might want to preserve extension in the public_id so the URL ends with it
+      // Cloudinary raw URLs: /raw/upload/v1234/folder/filename.ext
+      // Image URLs: /image/upload/v1234/folder/filename (extension implied or added)
+
+      let publicId = `${timestamp}_${sanitizedName}`;
+      if (resourceType === 'raw' && ext) {
+        publicId += `.${ext}`;
+      }
 
       const result = await cloudinary.uploader.upload(dataURI, {
-        resource_type: "auto",
+        resource_type: resourceType,
         folder: `ojt-assets/${folderName}`,
         public_id: publicId,
-        use_filename: true,
+        use_filename: false, // Strictly use our public_id
         unique_filename: false,
         overwrite: true,
         access_mode: "public",

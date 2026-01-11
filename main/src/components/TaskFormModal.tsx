@@ -251,9 +251,16 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, o
                             <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-green-300 border-dashed rounded-lg cursor-pointer bg-green-50 hover:bg-green-100 transition-colors">
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <p className="mb-2 text-sm text-green-700"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                    <p className="text-xs text-green-600">PDF, DOC, Images (MAX. 10MB)</p>
+                                    <p className="text-xs text-green-600">DOC, Excel, Images (MAX. 10MB)</p>
                                 </div>
-                                <input id="dropzone-file" type="file" className="hidden" multiple onChange={handleFileChange} />
+                                <input
+                                    id="dropzone-file"
+                                    type="file"
+                                    className="hidden"
+                                    multiple
+                                    onChange={handleFileChange}
+                                    accept=".doc,.docx,.xls,.xlsx,.csv,image/*"
+                                />
                             </label>
                         </div>
                         {files.length > 0 && (

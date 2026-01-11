@@ -124,6 +124,10 @@ export const MyTasks: React.FC = () => {
         }
     };
 
+    const getDownloadUrl = (url: string) => {
+        return url;
+    };
+
     const getPriorityColor = (priority: Task['priority']) => {
         switch (priority) {
             case 'high': return 'text-green-800 font-bold';
@@ -286,6 +290,7 @@ export const MyTasks: React.FC = () => {
                                         type="file"
                                         multiple
                                         onChange={handleFileSelect}
+                                        accept=".doc,.docx,.xls,.xlsx,.csv,image/*"
                                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
                                     />
                                     {submissionFiles.length > 0 && (
@@ -318,7 +323,7 @@ export const MyTasks: React.FC = () => {
                                         <ul className="list-disc pl-5 text-sm text-green-600">
                                             {mySubmission.files.map((url: string, i: number) => (
                                                 <li key={i}>
-                                                    <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                                    <a href={getDownloadUrl(url)} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                                         Attachment {i + 1}
                                                     </a>
                                                 </li>
