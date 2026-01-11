@@ -54,12 +54,17 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
 
             setPullDistance(damped);
 
-            // Direct control for responsiveness
-            spinnerControls.set({
-                y: damped,
-                opacity: Math.min(damped / (threshold * 0.5), 1),
-                rotate: (damped / threshold) * 360
-            });
+            // Visual deadzone: Don't show anything until pulled at least 40px
+            if (damped < 40) {
+                spinnerControls.set({ y: 0, opacity: 0 });
+            } else {
+                // Direct control for responsiveness
+                spinnerControls.set({
+                    y: damped,
+                    opacity: Math.min((damped - 40) / (threshold * 0.4), 1), // Fade in after deadzone
+                    rotate: (damped / threshold) * 360
+                });
+            }
         } else {
             // If scrolling back up/down, cancel pull
             if (isDragging.current) {
