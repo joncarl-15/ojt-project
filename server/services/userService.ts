@@ -115,7 +115,7 @@ export class UserService {
     const createdUser = await this.userRepository.createUser(userData);
 
     // Auto-add to program group
-    if (userData.program && userData.role === 'student') {
+    if (userData.program && (userData.role === 'student' || userData.role === 'coordinator')) {
       try {
         const { ConversationService } = await import("./conversationService");
         const conversationService = new ConversationService();
@@ -186,7 +186,7 @@ export class UserService {
     }
 
     // Check if program was updated, if so, add to new group (optional: remove from old?)
-    if (updateData.program && user.role === 'student') {
+    if (updateData.program && (user.role === 'student' || user.role === 'coordinator')) {
       try {
         const { ConversationService } = await import("./conversationService");
         const conversationService = new ConversationService();

@@ -74,7 +74,7 @@ export class AuthService {
     });
 
     // Auto-add to program group
-    if (newUser.program && newUser.role === 'student') {
+    if (newUser.program && (newUser.role === 'student' || newUser.role === 'coordinator')) {
       try {
         const { ConversationService } = await import("./conversationService");
         const conversationService = new ConversationService();

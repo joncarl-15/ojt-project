@@ -593,7 +593,7 @@ export const Messages: React.FC = () => {
     };
 
     return (
-        <div className="h-[calc(100dvh-theme(spacing.24))] md:h-[calc(100vh-theme(spacing.24))] flex flex-col">
+        <div className="h-full flex flex-col">
             <div className={`mb-4 ${selectedConversationId ? 'hidden md:block' : ''}`}>
                 <h1 className="text-2xl font-bold text-green-700 flex items-center gap-2">
                     <MessageSquare className="text-green-700" /> Messages
@@ -603,7 +603,7 @@ export const Messages: React.FC = () => {
             <Card className="flex-1 flex overflow-hidden border border-gray-100 shadow-sm relative">
                 {/* Sidebar */}
                 <div className={`w-full md:w-80 border-r border-gray-100 flex-col bg-white ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
-                    <div className="p-4 border-b border-gray-100">
+                    <div className="p-3 md:p-4 border-b border-gray-100">
                         <Input
                             placeholder="Search user or group..."
                             icon={<Search size={18} />}
@@ -627,7 +627,7 @@ export const Messages: React.FC = () => {
                                     <div
                                         key={contact._id}
                                         onClick={() => setSelectedConversationId(contact._id)}
-                                        className={`px-4 py-2 cursor-pointer transition-colors flex items-center gap-3 ${selectedConversationId === contact._id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'}`}
+                                        className={`px-3 py-2 cursor-pointer transition-colors flex items-center gap-3 ${selectedConversationId === contact._id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'}`}
                                     >
                                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold">
                                             {contact.firstName[0]}{contact.lastName[0]}
@@ -650,7 +650,7 @@ export const Messages: React.FC = () => {
                             <div
                                 key={conversation.id}
                                 onClick={() => setSelectedConversationId(conversation.id)}
-                                className={`px-4 py-3 cursor-pointer transition-colors ${selectedConversationId === conversation.id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'} `}
+                                className={`px-3 py-3 cursor-pointer transition-colors ${selectedConversationId === conversation.id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'} `}
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="flex items-center gap-2">
@@ -688,7 +688,7 @@ export const Messages: React.FC = () => {
                     {selectedConversationId ? (
                         <>
                             {/* Chat Header */}
-                            <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+                            <div className="p-2 md:p-4 border-b border-gray-100 flex items-center gap-2 md:gap-3">
                                 <button
                                     onClick={() => setSelectedConversationId(null)}
                                     className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700"
@@ -705,7 +705,7 @@ export const Messages: React.FC = () => {
                             </div>
 
                             {/* Messages List */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
+                            <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4 bg-gray-50/30">
                                 {currentMessages.length === 0 && (
                                     <div className="flex flex-col items-center justify-center h-full text-gray-400">
                                         <p className="text-sm">Start the conversation!</p>
@@ -715,7 +715,7 @@ export const Messages: React.FC = () => {
                                     const isOwn = message.sender._id === user?._id;
                                     return (
                                         <div key={message._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} `}>
-                                            <div className="max-w-[85%] md:max-w-[70%] relative group min-w-0">
+                                            <div className="max-w-[90%] md:max-w-[70%] relative group min-w-0">
                                                 {!isOwn && selectedConversation?.type === 'group' && (
                                                     <p className="text-xs text-gray-500 mb-1 ml-1">{message.sender.firstName}</p>
                                                 )}
@@ -775,7 +775,7 @@ export const Messages: React.FC = () => {
                             </div>
 
                             {/* Input Area */}
-                            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 bg-white">
+                            <form onSubmit={handleSendMessage} className="p-2 md:p-4 border-t border-gray-100 bg-white">
                                 {imagePreview && (
                                     <div className="mb-2 relative inline-block">
                                         <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-gray-200" />
@@ -799,7 +799,7 @@ export const Messages: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
+                                        className="p-2 md:p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
                                     >
                                         <ImageIcon size={20} />
                                     </button>
@@ -813,11 +813,11 @@ export const Messages: React.FC = () => {
                                             }
                                         }}
                                         placeholder="Type a message..."
-                                        className="flex-1 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all p-3 resize-none min-h-[60px]"
+                                        className="flex-1 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all p-2 md:p-3 resize-none min-h-[44px] md:min-h-[60px]"
                                     />
                                     <button
                                         type="submit"
-                                        className="p-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="p-2 md:p-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={!messageInput.trim() && !imageFile}
                                     >
                                         <Send size={20} />

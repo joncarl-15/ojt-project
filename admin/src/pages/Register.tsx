@@ -55,7 +55,7 @@ export const Register: React.FC = () => {
             const data = await response.json();
 
             if (response.ok && data.status === 'success') {
-                window.location.href = 'https://www.google.com';
+                window.location.href = '/success';
             } else {
                 setError(data.message || 'Registration failed');
             }

@@ -192,7 +192,7 @@ export const DashboardLayout: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="p-4 lg:p-8 max-w-7xl mx-auto animate-fade-in">
+                    <div className="p-2 md:p-4 lg:p-8 max-w-7xl mx-auto animate-fade-in h-full flex flex-col flex-1">
                         <Outlet />
                     </div>
                 </PullToRefresh>
