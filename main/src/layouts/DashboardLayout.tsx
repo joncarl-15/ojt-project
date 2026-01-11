@@ -175,7 +175,10 @@ export const DashboardLayout: React.FC = () => {
 
             {/* Main Content */}
             <main className="flex-1 min-w-0 overflow-hidden relative">
-                <PullToRefresh onRefresh={() => window.location.reload()}>
+                <PullToRefresh
+                    onRefresh={() => window.location.reload()}
+                    disabled={location.pathname.includes('/messages')}
+                >
                     {/* Mobile Header */}
                     <div className="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
                         <h1 className="text-lg font-bold text-gray-900">
