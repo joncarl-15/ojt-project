@@ -54,14 +54,20 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
 
             setPullDistance(damped);
 
-            // Visual deadzone: Don't show anything until pulled at least 40px
-            if (damped < 40) {
-                spinnerControls.set({ y: 0, opacity: 0 });
+            // Visual deadzone & Slide-in effect
+            // We start at y: -50. So at damped = 0, y = -50.
+            // We want it to be fully visible at threshold.
+
+            const startOffset = -50;
+            const targetY = startOffset + damped;
+
+            if (damped < 20) {
+                // Keep hidden
+                spinnerControls.set({ y: startOffset, opacity: 0 });
             } else {
-                // Direct control for responsiveness
                 spinnerControls.set({
-                    y: damped,
-                    opacity: Math.min((damped - 40) / (threshold * 0.4), 1), // Fade in after deadzone
+                    y: targetY,
+                    opacity: Math.min((damped - 20) / (threshold * 0.3), 1),
                     rotate: (damped / threshold) * 360
                 });
             }
@@ -70,7 +76,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
             if (isDragging.current) {
                 isDragging.current = false;
                 setPullDistance(0);
-                spinnerControls.start({ y: 0, opacity: 0 });
+                spinnerControls.start({ y: -50, opacity: 0 });
             }
         }
     };
@@ -82,11 +88,11 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
         if (pullDistance > threshold) {
             setIsRefreshing(true);
 
-            // Snap to loading position
+            // Snap to loading position (approx y=50 or threshold/2)
             await spinnerControls.start({
-                y: threshold,
+                y: threshold / 2, // Centered nicely
                 opacity: 1,
-                rotate: 0, // Reset rotation for spinning animation
+                rotate: 0,
                 transition: { type: "spring", stiffness: 300, damping: 30 }
             });
 
@@ -99,23 +105,20 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
             try {
                 await onRefresh();
             } finally {
-                // Determine if we should really stop refreshing here.
-                // If onRefresh reloads the page, this cleanup might not even run or matter.
-                // But for robust code:
                 setIsRefreshing(false);
                 setPullDistance(0);
                 spinnerControls.stop();
                 spinnerControls.start({
-                    y: 0,
+                    y: -50,
                     opacity: 0,
                     transition: { duration: 0.2 }
                 });
             }
         } else {
-            // Snap back if threshold not met
+            // Snap back
             setPullDistance(0);
             spinnerControls.start({
-                y: 0,
+                y: -50,
                 opacity: 0,
                 transition: { type: "spring", stiffness: 300, damping: 30 }
             });
@@ -126,16 +129,12 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
         <div className="relative h-full overflow-hidden flex flex-col">
             {/* 
               Floating Spinner
-              - Fixed position relative to this container (absolute)
-              - High z-index to overlay everything
-              - Starts hidden (opacity 0)
-              - pointer-events-none so it doesn't block touches 
             */}
-            <div className="absolute top-0 left-0 right-0 flex justify-center -mt-2 pointer-events-none z-[10000]">
+            <div className="absolute top-0 left-0 right-0 flex justify-center mt-2 pointer-events-none z-[10000]">
                 <motion.div
                     animate={spinnerControls}
-                    initial={{ y: 0, opacity: 0 }}
-                    className="bg-white p-2 rounded-full border border-green-100 text-green-600 flex items-center justify-center"
+                    initial={{ y: -50, opacity: 0 }}
+                    className="bg-white p-2 rounded-full border border-green-100 text-green-600 flex items-center justify-center shadow-md"
                     style={{ willChange: 'transform, opacity' }}
                 >
                     <RefreshCw size={20} />
