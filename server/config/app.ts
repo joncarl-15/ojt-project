@@ -44,6 +44,11 @@ export const createApp = (io?: SocketIOServer): express.Application => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Ensure DB is connected for every request
+  // This is crucial for serverless environments (Vercel)
+  const { dbConnection } = require("../middleware/dbConnection");
+  app.use(dbConnection);
+
   //Routes
   routes.forEach((route) => {
     console.log(`Mounting route: ${route.method.toUpperCase()} /api${route.path}`);

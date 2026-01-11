@@ -32,10 +32,6 @@ const startServer = async () => {
 };
 
 // Export app for Vercel case
-// We need to ensure DB is connected. 
-// Note: In serverless, we should cache the connection if possible, but mongoose handles logic internally often.
-connectDatabase().catch(err => console.error("Vercel DB Connect Error:", err));
-
 export default createApp();
 
 // Only listen if run directly (not imported as a module for Vercel)
