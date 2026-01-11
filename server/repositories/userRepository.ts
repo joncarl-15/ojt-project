@@ -378,4 +378,26 @@ export class UserRepository {
     ]);
     return dashboard;
   }
+  async getInternCountsByCompany(): Promise<any[]> {
+    return User.aggregate([
+      {
+        $match: {
+          role: "student",
+          isArchived: { $ne: true },
+          "metadata.company": { $exists: true, $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: "$metadata.company",
+          total: { $sum: 1 },
+          active: {
+            $sum: {
+              $cond: [{ $in: ["$metadata.status", ["scheduled", "deployed"]] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+  }
 }

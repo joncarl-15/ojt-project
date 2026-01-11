@@ -61,18 +61,22 @@ export const Dashboard: React.FC = () => {
 
     // Check for tutorial seen status
     useEffect(() => {
-        const hasSeenTutorialForever = localStorage.getItem('ojt_tutorial_seen_v1');
-        const hasSeenTutorialSession = sessionStorage.getItem('ojt_tutorial_session_seen');
+        if (!user) return;
+
+        const hasSeenTutorialForever = localStorage.getItem(`ojt_tutorial_seen_${user._id}`);
+        // Session seen can remain global or be specific, keeping it simply global per session is fine, 
+        // but user specifically asked for account isolation. Let's make it specific too just in case.
+        const hasSeenTutorialSession = sessionStorage.getItem(`ojt_tutorial_session_seen_${user._id}`);
 
         if (!hasSeenTutorialForever && !hasSeenTutorialSession) {
             // Small delay to ensure smooth entrance after load
             const timer = setTimeout(() => {
                 setShowTutorial(true);
-                sessionStorage.setItem('ojt_tutorial_session_seen', 'true');
+                sessionStorage.setItem(`ojt_tutorial_session_seen_${user._id}`, 'true');
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, []);
+    }, [user]);
 
 
 
@@ -107,7 +111,7 @@ export const Dashboard: React.FC = () => {
                         <h2 className="text-2xl font-bold text-green-700 flex items-center gap-2">
                             <LayoutDashboard className="text-green-700" /> Dashboard
                         </h2>
-                        <p className="text-green-600">Welcome back, {user?.username}!</p>
+                        <p className="text-green-600">Welcome back, {user?.firstName}!</p>
                     </div>
 
                 </div>
@@ -197,6 +201,7 @@ export const Dashboard: React.FC = () => {
                         isOpen={showTutorial}
                         onClose={() => setShowTutorial(false)}
                         userRole={user?.role || 'student'}
+                        userId={user._id}
                     />
                 </div>
             </div>
@@ -259,7 +264,7 @@ export const Dashboard: React.FC = () => {
                     <h2 className="text-2xl font-bold text-green-700 flex items-center gap-2">
                         <LayoutDashboard className="text-green-700" /> Dashboard
                     </h2>
-                    <p className="text-green-600">Welcome back, {user?.username}!</p>
+                    <p className="text-green-600">Welcome back, {user?.firstName}!</p>
                 </div>
 
             </div>
@@ -319,6 +324,7 @@ export const Dashboard: React.FC = () => {
                 isOpen={showTutorial}
                 onClose={() => setShowTutorial(false)}
                 userRole={user?.role || 'student'}
+                userId={user._id}
             />
         </div>
     );

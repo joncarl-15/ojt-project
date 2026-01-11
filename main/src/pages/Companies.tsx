@@ -2,7 +2,7 @@ import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody } from '../components/Card';
 import { Button } from '../components/Button';
-import { Plus, Building2, Users, Minus, Loader2 } from 'lucide-react';
+import { Plus, Building2, Users, Minus, Loader2, Pencil } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { CreateCompanyModal } from '../components/CreateCompanyModal';
 
@@ -11,12 +11,18 @@ interface Company {
     name: string;
     address: string;
     description: string;
+    contactEmail?: string;
+    contactPerson?: string;
+    contactPhone?: string;
+    total?: number;
+    active?: number;
 }
 
 export const Companies: React.FC = () => {
     const [companies, setCompanies] = useState<Company[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const { token } = useAuth();
 
     const fetchCompanies = async () => {
@@ -60,6 +66,11 @@ export const Companies: React.FC = () => {
         }
     };
 
+    const handleEdit = (company: Company) => {
+        setSelectedCompany(company);
+        setIsModalOpen(true);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -72,7 +83,10 @@ export const Companies: React.FC = () => {
 
                 <Button
                     className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => {
+                        setSelectedCompany(null);
+                        setIsModalOpen(true);
+                    }}
                 >
                     <Plus size={20} /> Add Company
                 </Button>
@@ -99,12 +113,22 @@ export const Companies: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <button
-                                        className="text-gray-400 hover:text-gray-600"
-                                        onClick={() => handleDelete(company._id)}
-                                    >
-                                        <Minus size={20} />
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            className="text-gray-400 hover:text-green-600"
+                                            onClick={() => handleEdit(company)}
+                                            title="Edit Company"
+                                        >
+                                            <Pencil size={20} />
+                                        </button>
+                                        <button
+                                            className="text-gray-400 hover:text-red-600"
+                                            onClick={() => handleDelete(company._id)}
+                                            title="Delete Company"
+                                        >
+                                            <Minus size={20} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <p className="text-gray-600 text-sm mb-6 line-clamp-3">
@@ -113,7 +137,7 @@ export const Companies: React.FC = () => {
 
                                 <div className="flex items-center text-gray-500 text-sm">
                                     <Users size={16} className="mr-2" />
-                                    <span>0 active, 0 total interns</span>
+                                    <span>{company.active || 0} active, {company.total || 0} total interns</span>
                                 </div>
                             </CardBody>
                         </Card>
@@ -127,8 +151,12 @@ export const Companies: React.FC = () => {
 
             <CreateCompanyModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setSelectedCompany(null);
+                }}
                 onSuccess={fetchCompanies}
+                companyToEdit={selectedCompany}
             />
         </div>
     );

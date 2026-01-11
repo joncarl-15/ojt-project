@@ -587,7 +587,7 @@ export const Messages: React.FC = () => {
 
     return (
         <div className="h-[calc(100dvh-theme(spacing.24))] md:h-[calc(100vh-theme(spacing.24))] flex flex-col">
-            <div className={`mb - 4 ${selectedConversationId ? 'hidden md:block' : ''}`}>
+            <div className={`mb-4 ${selectedConversationId ? 'hidden md:block' : ''}`}>
                 <h1 className="text-2xl font-bold text-green-700 flex items-center gap-2">
                     <MessageSquare className="text-green-700" /> Messages
                 </h1>
@@ -595,7 +595,7 @@ export const Messages: React.FC = () => {
 
             <Card className="flex-1 flex overflow-hidden border border-gray-100 shadow-sm relative">
                 {/* Sidebar */}
-                <div className={`w - full md: w - 80 border - r border - gray - 100 flex - col bg - white ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`w-full md:w-80 border-r border-gray-100 flex-col bg-white ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-gray-100">
                         <Input
                             placeholder="Search user or group..."
@@ -620,13 +620,13 @@ export const Messages: React.FC = () => {
                                     <div
                                         key={contact._id}
                                         onClick={() => setSelectedConversationId(contact._id)}
-                                        className={`px - 4 py - 2 cursor - pointer transition - colors flex items - center gap - 3 ${selectedConversationId === contact._id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'}`}
+                                        className={`px-4 py-2 cursor-pointer transition-colors flex items-center gap-3 ${selectedConversationId === contact._id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'}`}
                                     >
                                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold">
                                             {contact.firstName[0]}{contact.lastName[0]}
                                         </div>
                                         <div>
-                                            <p className={`text - sm font - medium ${selectedConversationId === contact._id ? 'text-gray-900' : 'text-gray-700'} `}>
+                                            <p className={`text-sm font-medium ${selectedConversationId === contact._id ? 'text-gray-900' : 'text-gray-700'} `}>
                                                 {contact.firstName} {contact.lastName}
                                             </p>
                                             <p className="text-[10px] text-gray-500 capitalize">{contact.program || contact.role}</p>
@@ -643,16 +643,16 @@ export const Messages: React.FC = () => {
                             <div
                                 key={conversation.id}
                                 onClick={() => setSelectedConversationId(conversation.id)}
-                                className={`px - 4 py - 3 cursor - pointer transition - colors ${selectedConversationId === conversation.id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'} `}
+                                className={`px-4 py-3 cursor-pointer transition-colors ${selectedConversationId === conversation.id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'} `}
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <div className="flex items-center gap-2">
                                         {conversation.type === 'group' ? <Users size={16} className="text-gray-500" /> : null}
-                                        <span className={`font - semibold text - sm ${selectedConversationId === conversation.id ? 'text-gray-900' : 'text-gray-900'} `}>{conversation.name}</span>
+                                        <span className={`font-semibold text-sm ${selectedConversationId === conversation.id ? 'text-gray-900' : 'text-gray-900'} `}>{conversation.name}</span>
                                     </div>
                                     <span className="text-xs text-green-600 font-medium capitalize">{conversation.role || 'Group'}</span>
                                 </div>
-                                <p className={`text - sm ${selectedConversationId === conversation.id ? 'text-green-600' : 'text-gray-500'} truncate`}>
+                                <p className={`text-sm ${selectedConversationId === conversation.id ? 'text-green-600' : 'text-gray-500'} truncate`}>
                                     {conversation.type === 'group' && conversation.lastMessage && !conversation.lastMessage.isOwn ? 'Someone: ' : ''}
                                     {conversation.lastMessage?.text}
                                 </p>
@@ -677,7 +677,7 @@ export const Messages: React.FC = () => {
                 </div>
 
                 {/* Chat Area */}
-                <div className={`flex - 1 flex - col bg - white ${selectedConversationId ? 'flex' : 'hidden md:flex'} `}>
+                <div className={`flex-1 flex-col bg-white ${selectedConversationId ? 'flex' : 'hidden md:flex'} `}>
                     {selectedConversationId ? (
                         <>
                             {/* Chat Header */}
@@ -712,7 +712,7 @@ export const Messages: React.FC = () => {
                                                 {!isOwn && selectedConversation?.type === 'group' && (
                                                     <p className="text-xs text-gray-500 mb-1 ml-1">{message.sender.firstName}</p>
                                                 )}
-                                                <div className={`rounded - 2xl px - 4 py - 2 break-words overflow - hidden ${isOwn ? 'bg-green-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'} `}>
+                                                <div className={`rounded-2xl px-4 py-2 break-words overflow-hidden ${isOwn ? 'bg-green-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'} `}>
                                                     {message.image && (
                                                         <div className="mb-2 -mx-2 mt-[-4px]">
                                                             <img
@@ -739,7 +739,7 @@ export const Messages: React.FC = () => {
                                                     ) : (
                                                         <>
                                                             {message.content && renderMessageContent(message.content)}
-                                                            <span className={`text - [10px] block mt - 1 ${isOwn ? 'text-green-100' : 'text-gray-400'} `}>
+                                                            <span className={`text-[10px] block mt-1 ${isOwn ? 'text-green-100' : 'text-gray-400'} `}>
                                                                 {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                         </>

@@ -3,11 +3,15 @@ import { AppError } from "../middleware/errorHandler";
 import { CompanyModel } from "../models/companyModel";
 import { CompanyRepository } from "../repositories/companyRepository";
 
+import { UserRepository } from "../repositories/userRepository";
+
 export class CompanyService {
   private companyRepository: CompanyRepository;
+  private userRepository: UserRepository;
 
   constructor() {
     this.companyRepository = new CompanyRepository();
+    this.userRepository = new UserRepository();
   }
 
   async getCompany(id: string): Promise<CompanyModel | null> {
@@ -18,8 +22,24 @@ export class CompanyService {
     return company;
   }
 
-  async getCompanies(): Promise<CompanyModel[]> {
-    return this.companyRepository.getCompanies();
+  async getCompanies(): Promise<any[]> {
+    const companies = await this.companyRepository.getCompanies();
+    const counts = await this.userRepository.getInternCountsByCompany();
+
+    // Map counts for O(1) access
+    const countMap = counts.reduce((acc, curr) => {
+      acc[curr._id.toString()] = { total: curr.total, active: curr.active };
+      return acc;
+    }, {} as Record<string, { total: number; active: number }>);
+
+    // Merge
+    return companies.map((company) => {
+      const stats = countMap[company._id.toString()] || { total: 0, active: 0 };
+      return {
+        ...company.toObject(),
+        ...stats,
+      };
+    });
   }
 
   async createCompany(data: Partial<CompanyModel>) {

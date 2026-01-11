@@ -6,9 +6,10 @@ interface TutorialModalProps {
     isOpen: boolean;
     onClose: () => void;
     userRole: string;
+    userId: string;
 }
 
-export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, userRole }) => {
+export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, userRole, userId }) => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const [dontShowAgain, setDontShowAgain] = useState(false);
 
@@ -91,7 +92,7 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, u
 
     const handleFinish = () => {
         if (dontShowAgain) {
-            localStorage.setItem('ojt_tutorial_seen_v1', 'true');
+            localStorage.setItem(`ojt_tutorial_seen_${userId}`, 'true');
         }
         onClose();
     };
