@@ -11,7 +11,7 @@ interface PullToRefreshProps {
 export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     children,
     onRefresh,
-    threshold = 150 // Increased threshold to prevent accidental triggers
+    threshold = 100 // Reverted to original threshold for easier activation
 }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [pullDistance, setPullDistance] = useState(0);
@@ -33,8 +33,8 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
         // Only trigger if we are at the very top of the scroll container
         const scrollTop = containerRef.current?.scrollTop ?? 0;
 
-        // Strict check: must be at top
-        if (scrollTop === 0) {
+        // Ensure we are really at the top (allow 1px slack)
+        if (scrollTop <= 1) {
             startY.current = e.touches[0].clientY;
             isDragging.current = true;
         }
@@ -48,10 +48,9 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
         const scrollTop = containerRef.current?.scrollTop ?? 0;
 
         // If user pulls down while at top
-        if (scrollTop === 0 && delta > 0) {
-            // Apply heavier resistance/damping
-            // Lower multiplier means you have to pull further physically
-            const damped = Math.min(delta * 0.4, threshold * 2);
+        if (scrollTop <= 1 && delta > 0) {
+            // Apply standard resistance/damping
+            const damped = Math.min(delta * 0.5, threshold * 2);
 
             setPullDistance(damped);
 
