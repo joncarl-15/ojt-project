@@ -13,6 +13,8 @@ import { ConversationController } from "../controllers/conversationController";
 import { ArchiveController } from "../controllers/archiveController";
 import { NotificationController } from "../controllers/notificationController";
 
+import { DTRController } from "../controllers/dtrController";
+
 // Extract all routes from the controllers.
 export const routes = extract(
   UserController,
@@ -26,5 +28,6 @@ export const routes = extract(
   RequirementsController,
   ConversationController,
   ArchiveController,
-  NotificationController
+  NotificationController,
+  DTRController
 );

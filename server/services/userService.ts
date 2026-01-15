@@ -387,7 +387,8 @@ export class UserService {
 
   async updateUserDeploymentStatus(
     userId: string,
-    status: "scheduled" | "deployed" | "completed"
+    status: "scheduled" | "deployed" | "completed",
+    deploymentDate?: Date
   ): Promise<UserModel | null> {
     // Check if user exists
     const user = await this.userRepository.getUser(userId);
@@ -410,6 +411,7 @@ export class UserService {
       metadata: {
         ...user.metadata,
         status: status,
+        ...(deploymentDate && { deploymentDate: deploymentDate }), // Only update if provided
       },
     };
 

@@ -1,18 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
+import { Upload as UploadIcon, FileText, X, Loader2, Clock } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '../components/Card';
-import { Select } from '../components/Select';
 import { Button } from '../components/Button';
-import { Upload as UploadIcon, FileText, X, Loader2 } from 'lucide-react';
+import { Select } from '../components/Select';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-
 
 interface Requirement {
     _id: string;
     name: string;
-    program: 'bsit' | 'bsba';
+    program: string;
 }
+
+// Animation Variants
+const container = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const item = {
+    hidden: { opacity: 0, x: -10 },
+    show: { opacity: 1, x: 0 }
+};
 
 export const UploadDocuments: React.FC = () => {
     const [documentName, setDocumentName] = useState('');
@@ -107,7 +123,8 @@ export const UploadDocuments: React.FC = () => {
         setIsDragging(true);
     };
 
-    const handleDragLeave = () => {
+    const handleDragLeave = (e: React.DragEvent) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
         setIsDragging(false);
     };
 
@@ -137,47 +154,70 @@ export const UploadDocuments: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            >
                 <div>
-                    <h1 className="text-2xl font-bold text-green-700 flex items-center gap-2">
-                        <UploadIcon className="text-green-700" /> Upload Documents
+                    <h1 className="text-2xl font-bold text-violet-900 flex items-center gap-3">
+                        <div className="p-2 bg-violet-100 rounded-lg text-violet-600">
+                            <UploadIcon size={20} />
+                        </div>
+                        Upload Documents
                     </h1>
-                    <p className="text-green-600 mt-1">Upload your files — drag and drop or browse manually</p>
+                    <p className="text-slate-500 mt-1 text-sm">Manage and submit your required internship documents</p>
                 </div>
-            </div>
+            </motion.div>
 
-            <Card className="border border-gray-100 shadow-sm">
-                <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-                    <h2 className="text-lg font-semibold text-gray-900">Required Documents ({user?.program || 'N/A'})</h2>
+            <Card className="border border-violet-100 shadow-sm overflow-hidden">
+                <CardHeader className="bg-violet-50/50 border-b border-violet-100">
+                    <h2 className="text-lg font-bold text-violet-900 flex items-center gap-2">
+                        <FileText size={20} className="text-violet-500" />
+                        Required Documents
+                        <span className="text-xs font-normal text-violet-600 bg-violet-100 px-2 py-1 rounded-full uppercase ml-2 border border-violet-200">
+                            {user?.program || 'N/A'}
+                        </span>
+                    </h2>
                 </CardHeader>
-                <CardBody>
-                    <ul className="space-y-2">
+                <CardBody className="p-6">
+                    <motion.ul
+                        variants={container}
+                        initial="hidden"
+                        animate="show"
+                        className="grid grid-cols-1 md:grid-cols-2 gap-3"
+                    >
                         {requirements.length > 0 ? (
                             requirements.map((req) => (
-                                <li key={req._id} className="flex items-center gap-2 text-gray-600">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                    {req.name}
-                                </li>
+                                <motion.li key={req._id} variants={item} className="flex items-center gap-3 text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 border-l-4 border-l-violet-400">
+                                    <div className="flex-1 font-medium">{req.name}</div>
+                                </motion.li>
                             ))
                         ) : (
-                            <li className="text-gray-500 italic">No requirements found for your program.</li>
+                            <li className="text-slate-500 italic col-span-2 text-center py-4 bg-slate-50 rounded-xl">No requirements found for your program.</li>
                         )}
-                    </ul>
+                    </motion.ul>
                 </CardBody>
             </Card>
 
             {/* Uploaded Documents List */}
             {uploadedDocuments.length > 0 && (
-                <Card className="border border-gray-100 shadow-sm">
-                    <CardHeader className="bg-gray-50/50 border-b border-gray-100">
-                        <h2 className="text-lg font-semibold text-gray-900">Your Uploaded Documents</h2>
+                <Card className="border border-violet-100 shadow-sm">
+                    <CardHeader className="bg-white border-b border-violet-100">
+                        <h2 className="text-lg font-bold text-violet-900">Your Uploaded Documents</h2>
                     </CardHeader>
-                    <CardBody>
-                        <div className="space-y-3">
+                    <CardBody className="p-6">
+                        <motion.div
+                            variants={container}
+                            initial="hidden"
+                            animate="show"
+                            className="space-y-3"
+                        >
                             {uploadedDocuments.map((doc: any) => (
-                                <div key={doc._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white rounded-lg border border-gray-100 text-green-600">
+                                <motion.div key={doc._id} variants={item} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-xl border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all group">
+                                    <div className="flex items-start sm:items-center gap-4 mb-3 sm:mb-0">
+                                        <div className="p-3 bg-violet-50 rounded-xl text-violet-600 group-hover:bg-violet-100 transition-colors">
                                             {doc.documents && doc.documents[0] && /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.documents[0]) ? (
                                                 <div
                                                     className="cursor-pointer hover:opacity-80 transition-opacity"
@@ -186,42 +226,54 @@ export const UploadDocuments: React.FC = () => {
                                                     <img
                                                         src={doc.documents[0]}
                                                         alt="Preview"
-                                                        className="w-12 h-12 object-cover rounded-md border border-gray-200"
+                                                        className="w-10 h-10 object-cover rounded-lg"
                                                     />
                                                 </div>
                                             ) : (
-                                                <FileText size={24} />
+                                                <FileText size={20} />
                                             )}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900">{doc.documentName}</p>
-                                            <p className="text-xs text-gray-500">{new Date(doc.uploadedAt || doc.createdAt).toLocaleDateString()}</p>
+                                            <p className="font-semibold text-slate-800 group-hover:text-violet-700 transition-colors">{doc.documentName}</p>
+                                            <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                                                <Clock size={10} />
+                                                Uploaded {new Date(doc.uploadedAt || doc.createdAt).toLocaleDateString()}
+                                            </p>
                                         </div>
                                     </div>
-                                    <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${doc.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                        doc.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                                    <span className={`text-xs px-3 py-1.5 rounded-full font-bold uppercase tracking-wider mx-auto sm:mx-0 ${doc.status === 'approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                                        doc.status === 'rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                                            'bg-amber-100 text-amber-700 border border-amber-200'
                                         }`}>
                                         {doc.status}
                                     </span>
-                                </div>
+                                </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
                     </CardBody>
                 </Card>
             )}
 
-            <Card className="border border-gray-100 shadow-sm">
-                <CardHeader className="bg-gray-50/50 border-b border-gray-100 flex items-center gap-2">
-                    <UploadIcon size={18} className="text-green-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Upload Files</h2>
+            <Card className="border border-violet-100 shadow-lg">
+                <CardHeader className="bg-violet-600 text-white p-6 rounded-t-xl">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                            <UploadIcon size={24} className="text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold">Upload New Files</h2>
+                            <p className="text-violet-100 text-sm opacity-90">Select the requirement and drop your files below</p>
+                        </div>
+                    </div>
                 </CardHeader>
-                <CardBody className="space-y-6">
+                <CardBody className="space-y-6 p-6">
                     <Select
-                        label="Document Name *"
-                        placeholder="Select document type"
+                        label="Document Type *"
+                        placeholder="Select which requirement this file fulfills"
                         value={documentName}
                         onChange={(value) => setDocumentName(value)}
                         options={requirementOptions}
+                        className="text-slate-800"
                     />
 
                     <div
@@ -229,17 +281,25 @@ export const UploadDocuments: React.FC = () => {
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                         className={`
-                            border-2 border-dashed rounded-xl p-8 text-center transition-colors
-                            ${isDragging ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-200'}
+                            border-3 border-dashed rounded-2xl p-10 text-center transition-all duration-300
+                            ${isDragging
+                                ? 'border-violet-500 bg-violet-50 scale-[1.02]'
+                                : 'border-slate-300 hover:border-violet-400 hover:bg-slate-50'
+                            }
                         `}
                     >
-                        <div className="flex flex-col items-center justify-center gap-3">
-                            <div className="p-3 bg-gray-50 rounded-xl text-gray-400">
-                                <UploadIcon size={24} />
+                        <div className="flex flex-col items-center justify-center gap-4">
+                            <div className={`p-4 rounded-full transition-colors ${isDragging ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-400'}`}>
+                                <UploadIcon size={32} />
                             </div>
-                            <p className="text-gray-500">
-                                Drop files here or <span className="text-green-600 cursor-pointer hover:underline" onClick={() => document.getElementById('file-upload')?.click()}>click below to browse</span>
-                            </p>
+                            <div>
+                                <p className="text-lg font-semibold text-slate-700 mb-1">
+                                    Drag & Drop files here
+                                </p>
+                                <p className="text-slate-500 text-sm">
+                                    or <span className="text-violet-600 font-bold cursor-pointer hover:underline" onClick={() => document.getElementById('file-upload')?.click()}>browse your device</span>
+                                </p>
+                            </div>
                             <input
                                 id="file-upload"
                                 type="file"
@@ -253,19 +313,19 @@ export const UploadDocuments: React.FC = () => {
                     {files.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {files.map((file, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div key={index} className="flex items-center justify-between p-3 bg-violet-50 rounded-lg border border-violet-100 group">
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="p-2 bg-white rounded-lg border border-gray-100 text-green-600">
-                                            <FileText size={16} />
+                                        <div className="p-2 bg-white rounded-lg border border-violet-100 text-violet-600">
+                                            <FileText size={18} />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                                            <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+                                            <p className="text-sm font-semibold text-violet-900 truncate">{file.name}</p>
+                                            <p className="text-xs text-violet-500">{(file.size / 1024).toFixed(1)} KB</p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => removeFile(index)}
-                                        className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-1.5 text-violet-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                                     >
                                         <X size={16} />
                                     </button>
@@ -274,16 +334,16 @@ export const UploadDocuments: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="flex gap-3 justify-center pt-2">
+                    <div className="flex gap-3 justify-center pt-4">
                         <Button
                             type="button"
-                            className="bg-green-600 hover:bg-green-700 w-auto px-6 text-white"
+                            className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 w-auto px-6 font-medium"
                             onClick={() => document.getElementById('file-upload')?.click()}
                         >
-                            Browse Files
+                            Browse More
                         </Button>
                         <Button
-                            className="bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 w-auto px-6"
+                            className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-200 w-auto px-8 font-bold"
                             disabled={files.length === 0 || !documentName || uploading}
                             onClick={handleUpload}
                         >
@@ -293,7 +353,7 @@ export const UploadDocuments: React.FC = () => {
                                     Uploading...
                                 </>
                             ) : (
-                                'Upload Files'
+                                'Submit Documents'
                             )}
                         </Button>
                     </div>

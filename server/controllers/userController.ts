@@ -89,33 +89,46 @@ export class UserController {
         throw new AppError("Authentication required", 401);
       }
 
+      const targetUserId = req.body._id || userId;
+
       // Check if username is being updated
       if (req.body.userName) {
         const { comparePasswords } = await import("../helpers/auth");
+        // key fix: get the TARGET user, not just the logged in user
+        const targetUser = await this.userService.getUser(targetUserId);
         const currentUser = await this.userService.getUser(userId);
 
-        if (currentUser && currentUser.userName !== req.body.userName) {
-          // Username is changing, require password
-          if (!req.body.currentPassword) {
-            throw new AppError("Current password is required to change username", 400);
-          }
-
-          const isPasswordValid = await comparePasswords(req.body.currentPassword, currentUser.password);
-          if (!isPasswordValid) {
-            throw new AppError("Invalid current password", 401);
-          }
-
-          // Check for 30-day limit
-          if (currentUser.lastUsernameChangeDate) {
-            const daysSinceLastChange = (Date.now() - new Date(currentUser.lastUsernameChangeDate).getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSinceLastChange < 30) {
-              const daysRemaining = Math.ceil(30 - daysSinceLastChange);
-              throw new AppError(`You can only change your username once every 30 days. Please try again in ${daysRemaining} days.`, 403);
+        // If updating self
+        if (userId === targetUserId) {
+          if (targetUser && targetUser.userName !== req.body.userName) {
+            // Username is changing, require password
+            if (!req.body.currentPassword) {
+              throw new AppError("Current password is required to change username", 400);
             }
-          }
 
-          // Update the last change date
-          req.body.lastUsernameChangeDate = new Date();
+            const isPasswordValid = await comparePasswords(req.body.currentPassword, targetUser.password);
+            if (!isPasswordValid) {
+              throw new AppError("Invalid current password", 401);
+            }
+
+            // Check for 30-day limit
+            if (targetUser.lastUsernameChangeDate) {
+              const daysSinceLastChange = (Date.now() - new Date(targetUser.lastUsernameChangeDate).getTime()) / (1000 * 60 * 60 * 24);
+              if (daysSinceLastChange < 30) {
+                const daysRemaining = Math.ceil(30 - daysSinceLastChange);
+                throw new AppError(`You can only change your username once every 30 days. Please try again in ${daysRemaining} days.`, 403);
+              }
+            }
+
+            // Update the last change date
+            req.body.lastUsernameChangeDate = new Date();
+          }
+        } else {
+          // Updating another user (Admin check)
+          if (currentUser?.role !== 'admin' && currentUser?.role !== 'coordinator') {
+            throw new AppError("Unauthorized to update this user", 403);
+          }
+          // Admins/Coordinators can update username without password check of the target user
         }
       }
 
@@ -271,7 +284,7 @@ export class UserController {
       // Require authentication for this endpoint
       await requireAuthentication(req, res);
 
-      const { userId, status } = req.body;
+      const { userId, status, deploymentDate } = req.body;
 
       if (!userId || !status) {
         throw new AppError("User ID and status are required", 400);
@@ -281,7 +294,7 @@ export class UserController {
         throw new AppError("Invalid status. Must be 'scheduled', 'deployed', or 'completed'", 400);
       }
 
-      const user = await this.userService.updateUserDeploymentStatus(userId, status);
+      const user = await this.userService.updateUserDeploymentStatus(userId, status, deploymentDate);
       res.json({
         message: "User deployment status updated successfully",
         user,

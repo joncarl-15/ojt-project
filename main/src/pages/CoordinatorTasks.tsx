@@ -1,12 +1,13 @@
-import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-
+import { motion } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CheckSquare, Plus, Loader2, Edit, Trash2, FileText } from 'lucide-react';
 import { Button } from '../components/Button';
-import { Plus, Edit, Trash2, FileText, CheckSquare, Loader2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { TaskFormModal } from '../components/TaskFormModal';
 import { Modal } from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
+// Modals will be fixed after finding their paths
+import { TaskFormModal } from '../components/TaskFormModal'; // Placeholder
 
 interface Task {
     _id: string;
@@ -14,16 +15,29 @@ interface Task {
     description: string;
     status: string;
     dueDate: string;
-    assignedTo: string[]; // IDs
+    assignedTo: any[];
+    submissions?: any[];
     submissionProofUrl?: string[];
-    submissions?: {
-        student: any;
-        files: string[];
-        submittedAt: string;
-    }[];
 }
 
+// Animation Variants
+const container = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+};
+
 export const CoordinatorTasks: React.FC = () => {
+    // ... existing state ...
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     // const { token } = useAuth(); // Handled in the main block now
@@ -137,92 +151,117 @@ export const CoordinatorTasks: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            >
                 <div>
-                    <h2 className="text-2xl font-bold text-green-700 flex items-center gap-2">
-                        <CheckSquare className="text-green-600" /> Tasks
+                    <h2 className="text-2xl font-bold text-indigo-900 flex items-center gap-3">
+                        <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                            <CheckSquare size={20} />
+                        </div>
+                        Tasks Management
                     </h2>
-                    <p className="text-green-600 text-sm">Create, edit, and manage tasks for students</p>
+                    <p className="text-slate-500 mt-1 text-sm">Create, assign, and track student tasks</p>
                 </div>
 
                 <Button
-                    className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 px-6 shadow-lg shadow-indigo-200"
                     onClick={handleCreateTask}
                 >
-                    <Plus size={20} /> Create Task
+                    <Plus size={20} /> Create New Task
                 </Button>
-            </div>
+            </motion.div>
 
-            <div className="bg-white p-6 rounded-xl border border-green-100 space-y-6 shadow-sm">
-                <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-green-700">All Tasks</h3>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-6 shadow-sm">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <h3 className="text-lg font-bold text-slate-800">All Tasks</h3>
                 </div>
 
                 {isLoading ? (
                     <div className="flex justify-center p-12">
-                        <Loader2 className="animate-spin text-green-600" size={32} />
+                        <Loader2 className="animate-spin text-indigo-600" size={32} />
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <motion.div
+                        variants={container}
+                        initial="hidden"
+                        animate="show"
+                        className="space-y-4"
+                    >
                         {filteredTasks.length > 0 ? filteredTasks.map((task) => {
                             const status = getTaskStatus(task);
                             const fileCount = getFileCount(task);
 
+                            const statusColor = status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-100 text-amber-700 border-amber-200';
+
+                            const borderClass = status === 'completed' ? 'border-l-emerald-500' : 'border-l-amber-500';
+
                             return (
-                                <div key={task._id} className="border border-green-200 rounded-xl p-4 hover:shadow-md transition-shadow bg-white">
+                                <motion.div
+                                    key={task._id}
+                                    variants={item}
+                                    className={`border border-slate-200 rounded-xl p-5 hover:shadow-lg transition-all bg-white border-l-4 ${borderClass}`}
+                                >
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h4 className="font-bold text-green-800 text-lg">{task.title}</h4>
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <h4 className="font-bold text-slate-800 text-lg">{task.title}</h4>
+                                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide border ${statusColor}`}>
                                                     {status}
                                                 </span>
                                             </div>
-                                            <p className="text-green-600 text-sm mb-3">{task.description}</p>
+                                            <p className="text-slate-600 text-sm mb-4 leading-relaxed">{task.description}</p>
 
-                                            <div className="flex items-center gap-4 text-xs text-green-700 font-medium">
-                                                <span className="flex items-center gap-1">
-                                                    {fileCount} file(s) uploaded
+                                            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500">
+                                                <span className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                                    <FileText size={14} className="text-indigo-500" />
+                                                    {fileCount} uploads
                                                 </span>
-                                                <span className="flex items-center gap-1">
-                                                    Assigned: {task.assignedTo?.length || 0} student(s)
+                                                <span className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                                                    <CheckSquare size={14} className="text-indigo-500" />
+                                                    {task.assignedTo?.length || 0} assigned
                                                 </span>
-                                            </div>
-                                            <div className="mt-2">
-                                                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Student</span>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
                                             <Button
                                                 size="sm"
-                                                className="bg-green-600 hover:bg-green-700 text-white"
+                                                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-medium"
                                                 onClick={() => setSelectedTask(task)}
                                             >
                                                 View Details
                                             </Button>
                                             <button
-                                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg border border-green-200"
+                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                                                 onClick={() => handleEditTask(task)}
+                                                title="Edit Task"
                                             >
-                                                <Edit size={16} />
+                                                <Edit size={18} />
                                             </button>
                                             <button
-                                                className="p-2 text-green-600 hover:bg-red-50 hover:text-red-500 rounded-lg border border-green-200"
+                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                                                 onClick={() => handleDelete(task._id)}
+                                                title="Delete Task"
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 size={18} />
                                             </button>
                                         </div>
                                     </div>
-                                </div>
+                                </motion.div>
                             );
                         }) : (
-                            <div className="text-center text-gray-500 py-8">
-                                No tasks found
+                            <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                <CheckSquare className="mx-auto text-slate-300 mb-2" size={48} />
+                                <p className="text-slate-500 font-medium">No tasks found</p>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
                 )}
             </div>
 

@@ -181,6 +181,23 @@ export class MessageController {
     }
   };
 
+  @route.patch("/read-all")
+  markAllAsRead = async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await requireAuthentication(req, res);
+
+      const io = this.getSocketIO(req);
+      await this.messageService.markAllAsRead(req.user!.id, io);
+      res.json({ message: "All messages marked as read" });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   @route.patch("/conversation/:id/read")
   markConversationAsRead = async (
     req: AuthenticatedRequest,

@@ -9,6 +9,15 @@ interface User {
     role: string;
     avatar?: string;
     program?: string;
+    metadata?: {
+        company?: {
+            _id: string;
+            name: string;
+            safeZone?: any;
+        } | string;
+        status?: string;
+        deploymentDate?: string;
+    };
 }
 
 interface AuthContextType {

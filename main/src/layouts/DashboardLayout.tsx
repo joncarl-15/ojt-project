@@ -80,9 +80,10 @@ export const DashboardLayout: React.FC = () => {
         { icon: <Users size={18} />, label: 'Students', path: '/students' },
         { icon: <MessageSquare size={18} />, label: 'Messages', path: '/messages', badge: unreadCount },
         { icon: <CheckSquare size={18} />, label: 'Tasks', path: '/tasks' },
+        { icon: <Building2 size={18} />, label: 'Companies', path: '/companies' },
         { icon: <FileText size={18} />, label: 'Documents', path: '/documents' },
         { icon: <Megaphone size={18} />, label: 'Announcement', path: '/announcements' },
-        { icon: <Archive size={18} />, label: 'Archives', path: '/archives' },
+
     ];
 
     const navItems = user?.role === 'admin' ? adminNavItems : user?.role === 'coordinator' ? coordinatorNavItems : studentNavItems;
@@ -100,7 +101,16 @@ export const DashboardLayout: React.FC = () => {
                     }
           text-sm group relative
         `}
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={() => {
+                    setIsSidebarOpen(false);
+                    if (item.label === 'Messages' && (item as any).badge > 0) {
+                        setUnreadCount(0); // Optimistic clear
+                        fetch('/api/message/read-all', {
+                            method: 'PATCH',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        }).catch(err => console.error("Failed to mark all as read", err));
+                    }
+                }}
             >
                 {item.icon}
                 <span className="flex-1">{item.label}</span>
@@ -114,7 +124,7 @@ export const DashboardLayout: React.FC = () => {
     };
 
     return (
-        <div className="h-[100dvh] w-full bg-gray-50 flex overflow-hidden transition-colors duration-200">
+        <div className="h-[100dvh] w-full bg-gradient-to-br from-green-50 via-teal-50 to-emerald-50 flex overflow-hidden transition-colors duration-200 font-sans">
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
                 <div
@@ -126,27 +136,27 @@ export const DashboardLayout: React.FC = () => {
             {/* Sidebar */}
             <aside
                 className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-60 bg-white/80 backdrop-blur-md border-r border-gray-200
+          fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white/70 backdrop-blur-xl border-r border-white/50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]
           transform transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
             >
                 <div className="h-full flex flex-col">
                     <div className="p-6">
-                        <h1 className="text-2xl font-bold text-green-600">
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">
                             {user?.role === 'coordinator' ? 'Coordinator Menu' : 'OJT Monitor'}
                         </h1>
                     </div>
 
-                    <nav className="flex-1 px-4 space-y-2">
+                    <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
                         {navItems.map((item) => (
                             <NavItem key={item.path} item={item} />
                         ))}
                     </nav>
 
-                    <div className="p-4 border-t border-gray-100">
-                        <Link to="/profile" className="flex items-center space-x-3 px-4 py-3 mb-2 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer group">
-                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold group-hover:bg-green-200 transition-colors">
+                    <div className="p-4">
+                        <Link to="/profile" className="flex items-center space-x-3 px-4 py-3 mb-2 hover:bg-white/50 rounded-2xl transition-all duration-200 cursor-pointer group shadow-sm border border-transparent hover:border-white/60">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center text-green-600 font-bold group-hover:from-green-200 group-hover:to-emerald-200 transition-colors shadow-inner">
                                 {user?.avatar ? (
                                     <img src={user.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
                                 ) : (
@@ -154,17 +164,17 @@ export const DashboardLayout: React.FC = () => {
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate group-hover:text-green-700">
+                                <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-green-700">
                                     {user?.username}
                                 </p>
-                                <p className="text-xs text-gray-500 truncate">
+                                <p className="text-xs text-gray-500 truncate group-hover:text-green-600/70">
                                     {user?.email}
                                 </p>
                             </div>
                         </Link>
                         <button
                             onClick={logout}
-                            className="w-full flex items-center space-x-3 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="w-full flex items-center space-x-3 px-4 py-2 text-red-600 hover:bg-red-50/80 rounded-xl transition-colors font-medium"
                         >
                             <LogOut size={20} />
                             <span>Logout</span>
@@ -180,19 +190,19 @@ export const DashboardLayout: React.FC = () => {
                     disabled={location.pathname.includes('/messages')}
                 >
                     {/* Mobile Header */}
-                    <div className="lg:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                    <div className="lg:hidden sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/50 px-4 py-3 flex items-center justify-between shadow-sm">
                         <h1 className="text-lg font-bold text-gray-900">
                             {user?.role === 'coordinator' ? 'Coordinator Menu' : 'OJT Monitor'}
                         </h1>
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            className="p-2 text-gray-600 hover:bg-white/50 rounded-lg transition-colors"
                         >
                             {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
                     </div>
 
-                    <div className="p-2 md:p-4 lg:p-8 max-w-7xl mx-auto animate-fade-in h-full flex flex-col flex-1">
+                    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in h-full flex flex-col flex-1 overflow-y-auto">
                         <Outlet />
                     </div>
                 </PullToRefresh>

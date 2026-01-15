@@ -7,6 +7,11 @@ export interface CompanyModel extends Document {
   contactPerson: string;
   contactEmail: string;
   contactPhone?: string;
+  safeZone?: {
+    type: { type: string, enum: ['Polygon'] };
+    coordinates: number[][][];
+  };
+  safeZoneLabel?: string;
 }
 
 const CompanySchema = new Schema<CompanyModel>(
@@ -34,6 +39,21 @@ const CompanySchema = new Schema<CompanyModel>(
     contactPhone: {
       type: String,
     },
+    safeZone: {
+      type: {
+        type: String,
+        enum: ['Polygon'],
+        required: false
+      },
+      coordinates: {
+        type: [[[Number]]], // Array of arrays of arrays of numbers
+        required: false
+      }
+    },
+    safeZoneLabel: {
+      type: String,
+      required: false
+    }
   },
   { timestamps: true }
 );

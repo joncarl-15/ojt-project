@@ -1,29 +1,40 @@
-import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
+import { CheckCircle, Clock, AlertCircle, ChevronRight, Download, FileText, X } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { CheckCircle, Clock, AlertCircle, FileText, ChevronRight, Download, X } from 'lucide-react';
 import { Modal } from '../components/Modal';
-
 import { useAuth } from '../context/AuthContext';
-
+import { API_BASE_URL } from '../config';
 
 interface Task {
-    _id: string; // MongoDB ID is _id
+    _id: string;
     title: string;
     description: string;
     status: 'pending' | 'in-progress' | 'completed';
-    dueDate: string; // API returns date string
+    dueDate: string;
     priority: 'low' | 'medium' | 'high';
     submissionProofUrl?: string[];
-    submissions?: {
-        student: string;
-        files: string[];
-        submittedAt: string;
-    }[];
+    submissions?: any[];
 }
+
+// Animation Variants
+const container = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1
+        }
+    }
+};
+
+const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+};
 
 export const MyTasks: React.FC = () => {
     const { user, token } = useAuth();
@@ -128,29 +139,30 @@ export const MyTasks: React.FC = () => {
         return url;
     };
 
-    const getPriorityColor = (priority: Task['priority']) => {
-        switch (priority) {
-            case 'high': return 'text-green-800 font-bold';
-            case 'medium': return 'text-green-600';
-            case 'low': return 'text-gray-500';
-            default: return 'text-gray-600';
-        }
-    };
+
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            >
                 <div>
-                    <h1 className="text-2xl font-bold text-green-700 flex items-center gap-2">
-                        <CheckCircle className="text-green-700" /> My Tasks
+                    <h1 className="text-2xl font-bold text-indigo-900 flex items-center gap-3">
+                        <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                            <CheckCircle size={24} />
+                        </div>
+                        My Tasks
                     </h1>
-                    <p className="text-green-600 mt-1">View and manage your assigned tasks</p>
+                    <p className="text-slate-500 mt-1 text-sm">Track your progress and manage your assigned responsibilities</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <select
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
-                        className="px-3 py-2 border border-green-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none w-full sm:w-auto"
+                        className="px-4 py-2.5 border border-indigo-100 rounded-xl text-sm bg-white text-indigo-900 font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none w-full sm:w-auto shadow-sm hover:border-indigo-200 transition-colors"
                     >
                         <option value="all">All Tasks</option>
                         <option value="pending">Pending</option>
@@ -158,56 +170,91 @@ export const MyTasks: React.FC = () => {
                         <option value="completed">Completed</option>
                     </select>
                 </div>
-            </div>
+            </motion.div>
 
-            <div className="grid gap-4">
+            <motion.div
+                variants={container}
+                initial="hidden"
+                animate="show"
+                className="grid gap-4"
+            >
                 {filteredTasks.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">No tasks found.</div>
+                    <div className="text-center text-gray-500 py-12 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
+                        <CheckCircle className="mx-auto text-gray-300 mb-3" size={48} />
+                        <p className="text-lg font-medium text-gray-600">No tasks found</p>
+                        <p className="text-sm text-gray-400">Get started by asking for a task!</p>
+                    </div>
                 ) : (
                     filteredTasks.map(task => {
                         const effectiveStatus = getEffectiveStatus(task);
+
+                        const statusColors = {
+                            'pending': 'border-l-amber-500',
+                            'in-progress': 'border-l-blue-500',
+                            'completed': 'border-l-emerald-500'
+                        };
+
+                        const statusBadgeStyles = {
+                            'pending': 'bg-amber-100 text-amber-800 border-amber-200',
+                            'in-progress': 'bg-blue-100 text-blue-800 border-blue-200',
+                            'completed': 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        };
+
+                        const priorityStyles = {
+                            'high': 'bg-rose-50 text-rose-700 border-rose-100',
+                            'medium': 'bg-orange-50 text-orange-700 border-orange-100',
+                            'low': 'bg-slate-50 text-slate-700 border-slate-100'
+                        };
+
                         return (
-                            <Card
-                                key={task._id}
-                                className="group hover:shadow-md transition-shadow cursor-pointer border border-gray-200 hover:border-green-200"
-                                onClick={() => setSelectedTask(task)}
-                            >
-                                <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className={`p-3 rounded-xl ${effectiveStatus === 'completed' ? 'bg-green-100 text-green-600' :
-                                            effectiveStatus === 'in-progress' ? 'bg-green-50 text-green-600' :
-                                                'bg-gray-100 text-gray-500'
-                                            }`}>
-                                            {effectiveStatus === 'completed' ? <CheckCircle size={24} /> :
-                                                effectiveStatus === 'in-progress' ? <Clock size={24} /> :
-                                                    <AlertCircle size={24} />}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900 group-hover:text-green-600 transition-colors">{task.title}</h3>
-                                            <p className="text-sm text-gray-500 line-clamp-1 mt-1">{task.description}</p>
-                                            <div className="flex items-center gap-3 mt-3">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getStatusColor(effectiveStatus)}`}>
-                                                    {effectiveStatus.replace('-', ' ')}
-                                                </span>
-                                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                    <Clock size={12} />
-                                                    Due {new Date(task.dueDate).toLocaleDateString()}
-                                                </span>
-                                                <span className={`text-xs font-medium capitalize ${getPriorityColor(task.priority)}`}>
-                                                    {task.priority} Priority
-                                                </span>
+                            <motion.div key={task._id} variants={item}>
+                                <Card
+                                    className={`group hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 overflow-hidden ${statusColors[effectiveStatus] || 'border-l-gray-300'} border-l-4`}
+                                    onClick={() => setSelectedTask(task)}
+                                >
+                                    <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                        <div className="flex items-start gap-4 flex-1">
+                                            <div className={`p-3 rounded-2xl shadow-sm ${effectiveStatus === 'completed' ? 'bg-emerald-100 text-emerald-600' :
+                                                effectiveStatus === 'in-progress' ? 'bg-blue-100 text-blue-600' :
+                                                    'bg-amber-100 text-amber-600'
+                                                }`}>
+                                                {effectiveStatus === 'completed' ? <CheckCircle size={24} /> :
+                                                    effectiveStatus === 'in-progress' ? <Clock size={24} /> :
+                                                        <AlertCircle size={24} />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-start justify-between">
+                                                    <h3 className="font-bold text-gray-800 text-lg group-hover:text-indigo-700 transition-colors mb-1">{task.title}</h3>
+                                                </div>
+                                                <p className="text-sm text-gray-500 line-clamp-2 mb-3 leading-relaxed">{task.description}</p>
+
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize border ${statusBadgeStyles[effectiveStatus]}`}>
+                                                        {effectiveStatus.replace('-', ' ')}
+                                                    </span>
+
+                                                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize border flex items-center gap-1 ${priorityStyles[task.priority]}`}>
+                                                        {task.priority === 'high' && <AlertCircle size={10} />}
+                                                        {task.priority} Priority
+                                                    </span>
+
+                                                    <span className="text-xs text-slate-500 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
+                                                        <Clock size={12} />
+                                                        Due {new Date(task.dueDate).toLocaleDateString()}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="text-gray-300 group-hover:text-indigo-500 transition-transform group-hover:translate-x-1 hidden sm:block">
+                                            <ChevronRight size={28} />
+                                        </div>
                                     </div>
-                                    <div className="text-gray-300 group-hover:text-green-500 transition-colors hidden sm:block">
-                                        <ChevronRight size={24} />
-                                    </div>
-                                </div>
-                            </Card>
+                                </Card>
+                            </motion.div>
                         );
                     })
                 )}
-            </div>
+            </motion.div>
 
             {selectedTask && (
                 <Modal
@@ -265,7 +312,7 @@ export const MyTasks: React.FC = () => {
                                                         >
                                                             <FileText size={32} />
                                                             <span className="text-xs truncate w-full">Attachment {i + 1}</span>
-                                                            <Download size={16} className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2" />
+                                                            <Download size={16} className="transition-opacity absolute top-2 right-2" />
                                                         </a>
                                                     )}
                                                 </div>

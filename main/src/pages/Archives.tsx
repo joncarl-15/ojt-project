@@ -1,52 +1,52 @@
-import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { Search, Archive, User, FileText, RotateCcw, Trash2, Download, Upload as UploadIcon } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Archive, Upload as UploadIcon, Download, Search, User, FileText, RotateCcw, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardBody } from '../components/Card';
-import { Input } from '../components/Input';
-import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
 
-// Types matched to backend response
+import { Modal } from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
+
 interface ArchivedUser {
     _id: string;
     firstName: string;
     lastName: string;
-    userName: string;
     email: string;
     role: string;
-    program?: string;
-    metadata?: {
-        company?: {
-            name: string;
-        };
-        coordinator?: {
-            firstName: string;
-            lastName: string;
-        };
-        status?: string;
-    };
-    isArchived: boolean;
     archivedAt: string;
 }
 
 interface ArchivedDocument {
     _id: string;
     documentName: string;
-    status: string;
     student: {
         firstName: string;
         lastName: string;
-        email: string;
-        program: string;
     };
-    isArchived: boolean;
+    status: string;
     archivedAt: string;
-    uploadedAt: string;
 }
 
+// Animation Variants
+const container = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05
+        }
+    }
+};
+
+const item = {
+    hidden: { opacity: 0, x: -10 },
+    show: { opacity: 1, x: 0 }
+};
+
 export const Archives: React.FC = () => {
+    // ... existing state ...
     const [activeTab, setActiveTab] = useState<'students' | 'coordinators' | 'documents'>('students');
     const [searchQuery, setSearchQuery] = useState('');
     const [users, setUsers] = useState<ArchivedUser[]>([]);
@@ -207,186 +207,236 @@ export const Archives: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center flex-wrap gap-4">
+            <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+                className="flex justify-between items-center flex-wrap gap-4"
+            >
                 <div>
-                    <h1 className="text-2xl font-bold text-green-700 flex items-center gap-2">
-                        <Archive className="text-green-700" /> Archive
-                    </h1>
-                    <p className="text-green-600 mt-1">Manage deleted records and data recover</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2">
-                        <UploadIcon size={16} /> Import Data
-                    </Button>
-                    <Button variant="primary" onClick={handleExport} className="flex items-center gap-2">
-                        <Download size={16} /> Export Data
-                    </Button>
-                </div>
-            </div>
-
-            <Card className="overflow-hidden">
-                <div className="border-b border-gray-100 overflow-x-auto">
-                    <div className="flex px-4 sm:px-6 pt-4 gap-6 min-w-max">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 pb-4 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === tab.id
-                                    ? 'border-green-600 text-green-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <tab.icon size={18} />
-                                {tab.label}
-                                {/* Count is tricky because we fetch per tab group essentially, but let's just show loaded count if available */}
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                    {tab.count}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
-                    <div className="max-w-md">
-                        <Input
-                            icon={<Search size={20} />}
-                            placeholder="Search archives..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-white w-full"
-                        />
-                    </div>
-                </div>
-
-                <CardBody className="p-0">
-                    <div className="overflow-x-auto">
-                        {isLoading ? (
-                            <div className="p-8 text-center text-gray-500">Loading archives...</div>
-                        ) : (
-                            <table className="w-full text-left">
-                                <thead className="bg-green-50 text-green-800 text-sm font-medium">
-                                    <tr>
-                                        {(activeTab === 'students' || activeTab === 'coordinators') ? (
-                                            <>
-                                                <th className="px-6 py-4">Name</th>
-                                                <th className="px-6 py-4">Email</th>
-                                                <th className="px-6 py-4">Role</th>
-                                                <th className="px-6 py-4">Archived At</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <th className="px-6 py-4">Document Name</th>
-                                                <th className="px-6 py-4">Student</th>
-                                                <th className="px-6 py-4">Status</th>
-                                                <th className="px-6 py-4">Archived At</th>
-                                                <th className="px-6 py-4 text-right">Actions</th>
-                                            </>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {(activeTab === 'students' || activeTab === 'coordinators') ? (
-                                        filteredUsers.length === 0 ? (
-                                            <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No records found</td></tr>
-                                        ) : (
-                                            filteredUsers.map(user => (
-                                                <tr key={user._id} className="hover:bg-gray-50/50">
-                                                    <td className="px-6 py-4 font-medium text-green-700">{user.firstName} {user.lastName}</td>
-                                                    <td className="px-6 py-4 text-gray-500">{user.email}</td>
-                                                    <td className="px-6 py-4 capitalize">{user.role}</td>
-                                                    <td className="px-6 py-4 text-gray-500">{user.archivedAt ? format(new Date(user.archivedAt), 'MMM d, yyyy') : '-'}</td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <button
-                                                                onClick={() => handleRestore(user._id, 'user')}
-                                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                                title="Restore"
-                                                            >
-                                                                <RotateCcw size={18} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteForever(user._id, 'user')}
-                                                                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                                title="Delete Forever"
-                                                            >
-                                                                <Trash2 size={18} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )
-                                    ) : (
-                                        filteredDocuments.length === 0 ? (
-                                            <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">No records found</td></tr>
-                                        ) : (
-                                            filteredDocuments.map(doc => (
-                                                <tr key={doc._id} className="hover:bg-gray-50/50">
-                                                    <td className="px-6 py-4 font-medium text-green-700">{doc.documentName}</td>
-                                                    <td className="px-6 py-4 text-gray-500">{doc.student ? `${doc.student.firstName} ${doc.student.lastName}` : 'Unknown'}</td>
-                                                    <td className="px-6 py-4 capitalize">{doc.status}</td>
-                                                    <td className="px-6 py-4 text-gray-500">{doc.archivedAt ? format(new Date(doc.archivedAt), 'MMM d, yyyy') : '-'}</td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <button
-                                                                onClick={() => handleRestore(doc._id, 'document')}
-                                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                                title="Restore"
-                                                            >
-                                                                <RotateCcw size={18} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteForever(doc._id, 'document')}
-                                                                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                                title="Delete Forever"
-                                                            >
-                                                                <Trash2 size={18} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )
-                                    )}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                </CardBody>
-            </Card>
-
-            {/* Import Modal */}
-            <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Import Data">
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                        Upload a JSON file containing exported archive data.
-                    </p>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
-                        <input
-                            type="file"
-                            accept=".json"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                            id="import-file"
-                        />
-                        <label htmlFor="import-file" className="cursor-pointer flex flex-col items-center gap-2">
-                            <UploadIcon className="text-gray-400" size={32} />
-                            <span className="text-sm font-medium text-gray-700">Click to upload JSON</span>
-                        </label>
-                    </div>
-                    {importData && (
-                        <div className="bg-gray-50 p-2 rounded text-xs text-gray-500 truncate">
-                            File loaded. Ready to import.
+                    <h1 className="text-2xl font-extrabold text-slate-800 flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-slate-200 to-gray-100 rounded-2xl shadow-sm">
+                            <Archive className="text-slate-600" size={24} />
                         </div>
-                    )}
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>Cancel</Button>
-                        <Button variant="primary" onClick={handleImport} disabled={!importData}>Import</Button>
-                    </div>
+                        Archive
+                    </h1>
+                    <p className="text-slate-500 mt-1 ml-1 font-medium text-sm">Manage deleted records and data recovery</p>
                 </div>
-            </Modal>
+                <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300">
+                        <UploadIcon size={18} /> Import
+                    </Button>
+                    <Button variant="primary" onClick={handleExport} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white shadow-lg shadow-slate-200">
+                        <Download size={18} /> Export
+                    </Button>
+                </div>
+            </motion.div>
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+            >
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                >
+                    <Card className="overflow-hidden border-none shadow-xl bg-white/80 backdrop-blur-sm ring-1 ring-black/5">
+                        <div className="border-b border-slate-100 overflow-x-auto bg-white/50">
+                            <div className="flex px-6 pt-4 gap-8 min-w-max">
+                                {tabs.map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id as any)}
+                                        className={`flex items-center gap-2 pb-4 text-sm font-bold transition-all border-b-[3px] whitespace-nowrap px-1 ${activeTab === tab.id
+                                            ? 'border-slate-800 text-slate-800'
+                                            : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-200'
+                                            }`}
+                                    >
+                                        <tab.icon size={18} />
+                                        {tab.label}
+                                        <span className={`px-2 py-0.5 rounded-full text-xs transition-colors ${activeTab === tab.id ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                            {tab.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <div className="max-w-md relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    placeholder="Search archives..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent bg-white text-sm transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <CardBody className="p-0">
+                            <div className="overflow-x-auto">
+                                {isLoading ? (
+                                    <div className="p-12 text-center text-slate-400 flex flex-col items-center">
+                                        <Loader2 className="animate-spin mb-2" size={24} />
+                                        Loading archives...
+                                    </div>
+                                ) : (
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider font-bold">
+                                                {(activeTab === 'students' || activeTab === 'coordinators') ? (
+                                                    <>
+                                                        <th className="px-6 py-4 rounded-tl-lg">Name</th>
+                                                        <th className="px-6 py-4">Email</th>
+                                                        <th className="px-6 py-4">Role</th>
+                                                        <th className="px-6 py-4">Archived At</th>
+                                                        <th className="px-6 py-4 text-right rounded-tr-lg">Actions</th>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <th className="px-6 py-4">Document Name</th>
+                                                        <th className="px-6 py-4">Student</th>
+                                                        <th className="px-6 py-4">Status</th>
+                                                        <th className="px-6 py-4">Archived At</th>
+                                                        <th className="px-6 py-4 text-right">Actions</th>
+                                                    </>
+                                                )}
+                                            </tr>
+                                        </thead>
+                                        <AnimatePresence mode='wait'>
+                                            <motion.tbody
+                                                key={activeTab} // Key forces re-render and animation on tab switch
+                                                variants={container}
+                                                initial="hidden"
+                                                animate="show"
+                                                exit="hidden"
+                                                className="divide-y divide-slate-50"
+                                            >
+                                                {(activeTab === 'students' || activeTab === 'coordinators') ? (
+                                                    filteredUsers.length === 0 ? (
+                                                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">No records found</td></tr>
+                                                    ) : (
+                                                        filteredUsers.map(user => (
+                                                            <motion.tr
+                                                                key={user._id}
+                                                                variants={item}
+                                                                className="hover:bg-slate-50/60 transition-colors group"
+                                                            >
+                                                                <td className="px-6 py-4">
+                                                                    <div className="font-bold text-slate-700">{user.firstName} {user.lastName}</div>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-slate-500 text-sm">{user.email}</td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className="capitalize px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
+                                                                        {user.role}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-slate-400 text-sm">{user.archivedAt ? format(new Date(user.archivedAt), 'MMM d, yyyy') : '-'}</td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    <div className="flex justify-end gap-2 transition-opacity">
+                                                                        <button
+                                                                            onClick={() => handleRestore(user._id, 'user')}
+                                                                            className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                                                            title="Restore"
+                                                                        >
+                                                                            <RotateCcw size={16} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteForever(user._id, 'user')}
+                                                                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                                                            title="Delete Forever"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </motion.tr>
+                                                        ))
+                                                    )
+                                                ) : (
+                                                    filteredDocuments.length === 0 ? (
+                                                        <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">No records found</td></tr>
+                                                    ) : (
+                                                        filteredDocuments.map(doc => (
+                                                            <motion.tr
+                                                                key={doc._id}
+                                                                variants={item}
+                                                                className="hover:bg-slate-50/60 transition-colors group"
+                                                            >
+                                                                <td className="px-6 py-4 font-bold text-slate-700">{doc.documentName}</td>
+                                                                <td className="px-6 py-4 text-slate-500 text-sm">{doc.student ? `${doc.student.firstName} ${doc.student.lastName}` : 'Unknown'}</td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`capitalize px-2 py-0.5 rounded text-xs font-bold border ${doc.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : doc.status === 'rejected' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                                                                        }`}>
+                                                                        {doc.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-slate-400 text-sm">{doc.archivedAt ? format(new Date(doc.archivedAt), 'MMM d, yyyy') : '-'}</td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    <div className="flex justify-end gap-2 transition-opacity">
+                                                                        <button
+                                                                            onClick={() => handleRestore(doc._id, 'document')}
+                                                                            className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                                                            title="Restore"
+                                                                        >
+                                                                            <RotateCcw size={16} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteForever(doc._id, 'document')}
+                                                                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                                                            title="Delete Forever"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </motion.tr>
+                                                        ))
+                                                    )
+                                                )}
+                                            </motion.tbody>
+                                        </AnimatePresence>
+                                    </table>
+                                )}
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* Import Modal */}
+                    <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Import Data">
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-600">
+                                Upload a JSON file containing exported archive data.
+                            </p>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                                <input
+                                    type="file"
+                                    accept=".json"
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                    id="import-file"
+                                />
+                                <label htmlFor="import-file" className="cursor-pointer flex flex-col items-center gap-2">
+                                    <UploadIcon className="text-gray-400" size={32} />
+                                    <span className="text-sm font-medium text-gray-700">Click to upload JSON</span>
+                                </label>
+                            </div>
+                            {importData && (
+                                <div className="bg-gray-50 p-2 rounded text-xs text-gray-500 truncate">
+                                    File loaded. Ready to import.
+                                </div>
+                            )}
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button variant="outline" onClick={() => setIsImportModalOpen(false)}>Cancel</Button>
+                                <Button variant="primary" onClick={handleImport} disabled={!importData}>Import</Button>
+                            </div>
+                        </div>
+                    </Modal>
+                </motion.div>
+            </motion.div>
         </div>
     );
 };

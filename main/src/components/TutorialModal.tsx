@@ -48,31 +48,31 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, u
             title: `Hello ${roleContent.title}!`,
             description: "Welcome to the OJT Monitoring System. Let's take a quick tour of your new workspace.",
             emoji: "👋",
-            bgColor: "bg-green-50"
+            bgColor: "bg-gradient-to-br from-emerald-100 to-teal-50"
         },
         {
             title: "Your Command Center",
             description: roleContent.command,
             emoji: "🎛️",
-            bgColor: "bg-gray-50"
+            bgColor: "bg-gradient-to-br from-indigo-100 to-violet-50"
         },
         {
             title: "Stay Connected",
             description: (roleContent as any).connect,
             emoji: "💬",
-            bgColor: "bg-blue-50"
+            bgColor: "bg-gradient-to-br from-blue-100 to-cyan-50"
         },
         {
             title: "Task Management",
             description: roleContent.tasks,
             emoji: "✅",
-            bgColor: "bg-green-50"
+            bgColor: "bg-gradient-to-br from-emerald-100 to-green-50"
         },
         {
             title: "Document Handling",
             description: roleContent.docs,
             emoji: "📂",
-            bgColor: "bg-orange-50"
+            bgColor: "bg-gradient-to-br from-amber-100 to-orange-50"
         }
     ].filter(slide => slide.description);
 
@@ -113,28 +113,31 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, u
 
                 {/* Image or Icon Area - Full Bleed */}
                 <div className={`w-full aspect-[16/9] flex items-center justify-center relative overflow-hidden ${slide.bgColor || 'bg-gray-50'}`}>
-                    <div className="text-8xl animate-bounce drop-shadow-sm filter">
+                    <div className="text-8xl animate-bounce drop-shadow-md filter transform hover:scale-110 transition-transform duration-500 cursor-pointer">
                         {slide.emoji}
                     </div>
+                    {/* Decorative Circles */}
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-2xl"></div>
+                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/30 rounded-full blur-2xl"></div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 flex flex-col items-center text-center px-8 pt-6 pb-2 bg-white">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-3">{slide.title}</h2>
-                    <p className="text-gray-600 leading-relaxed max-w-sm">
+                <div className="flex-1 flex flex-col items-center text-center px-8 pt-8 pb-4 bg-white">
+                    <h2 className="text-3xl font-extrabold text-slate-800 mb-4 tracking-tight">{slide.title}</h2>
+                    <p className="text-slate-600 leading-relaxed max-w-sm text-lg">
                         {slide.description}
                     </p>
                 </div>
 
                 {/* Footer / Controls */}
-                <div className="p-6 bg-white">
-                    <div className="flex items-center justify-between mb-2">
+                <div className="p-8 bg-white">
+                    <div className="flex items-center justify-between mb-4">
                         {/* Dots Indicator */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-2.5">
                             {slides.map((_, idx) => (
                                 <div
                                     key={idx}
-                                    className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'bg-green-600 w-8' : 'bg-gray-200 w-2'}`}
+                                    className={`h-2.5 rounded-full transition-all duration-300 ${idx === currentSlide ? 'bg-indigo-600 w-8' : 'bg-slate-200 w-2.5'}`}
                                 />
                             ))}
                         </div>
@@ -144,17 +147,17 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose, u
                             {currentSlide > 0 && (
                                 <button
                                     onClick={handlePrev}
-                                    className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+                                    className="p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
                                 >
                                     <ChevronLeft size={24} />
                                 </button>
                             )}
                             <button
                                 onClick={handleNext}
-                                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-medium flex items-center gap-2 shadow-lg shadow-green-600/20 active:scale-95"
+                                className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95"
                             >
                                 {currentSlide === slides.length - 1 ? 'Get Started' : 'Next'}
-                                {currentSlide === slides.length - 1 ? <Check size={18} /> : <ChevronRight size={18} />}
+                                {currentSlide === slides.length - 1 ? <Check size={20} /> : <ChevronRight size={20} />}
                             </button>
                         </div>
                     </div>

@@ -22,6 +22,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, o
         lastName: '',
         program: '',
     });
+    const [assignmentData, setAssignmentData] = useState({
+        status: '',
+        deploymentDate: ''
+    });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const { token } = useAuth();
@@ -34,6 +38,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, o
                 firstName: user.firstName || '',
                 lastName: user.lastName || '',
                 program: user.program || '',
+            });
+            setAssignmentData({
+                status: user.metadata?.status || 'scheduled',
+                deploymentDate: user.metadata?.deploymentDate || ''
             });
         }
     }, [user]);
@@ -112,6 +120,91 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, o
                         { value: 'bsba', label: 'BSBA' }
                     ]}
                 />
+
+                {user.role === 'student' && user.metadata?.company && (
+                    <div className="pt-4 border-t border-gray-100">
+                        <h3 className="text-sm font-medium text-gray-900 mb-3">Assignment Details</h3>
+
+                        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-500 uppercase font-semibold">Status</label>
+                                <div className="flex gap-2 mt-2">
+                                    {['scheduled', 'deployed', 'completed'].map((status) => (
+                                        <button
+                                            key={status}
+                                            type="button"
+                                            onClick={async () => {
+                                                // Optimistic update
+                                                setAssignmentData(prev => ({ ...prev, status }));
+
+                                                try {
+                                                    const response = await fetch(`${API_BASE_URL}/user/deployment-status`, {
+                                                        method: 'PATCH',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'Authorization': `Bearer ${token}`
+                                                        },
+                                                        body: JSON.stringify({ userId: user._id, status })
+                                                    });
+
+                                                    if (response.ok) {
+                                                        onSuccess();
+                                                    }
+                                                } catch (err) {
+                                                    console.error("Failed to update status", err);
+                                                }
+                                            }}
+                                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${assignmentData.status === status
+                                                    ? 'bg-green-600 text-white shadow-sm'
+                                                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {assignmentData.deploymentDate && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase font-semibold">
+                                        {assignmentData.status === 'scheduled' ? 'Scheduled Date' : 'Deployment Date'}
+                                    </label>
+                                    <input
+                                        type="date"
+                                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white"
+                                        value={assignmentData.deploymentDate ? new Date(assignmentData.deploymentDate).toISOString().split('T')[0] : ''}
+                                        onChange={async (e) => {
+                                            const newDate = e.target.value;
+                                            setAssignmentData(prev => ({ ...prev, deploymentDate: newDate }));
+
+                                            try {
+                                                const response = await fetch(`${API_BASE_URL}/user/deployment-status`, {
+                                                    method: 'PATCH',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'Authorization': `Bearer ${token}`
+                                                    },
+                                                    body: JSON.stringify({
+                                                        userId: user._id,
+                                                        status: assignmentData.status,
+                                                        deploymentDate: newDate
+                                                    })
+                                                });
+
+                                                if (response.ok) {
+                                                    onSuccess();
+                                                }
+                                            } catch (err) {
+                                                console.error("Failed to update date", err);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex justify-end gap-2 mt-6">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>

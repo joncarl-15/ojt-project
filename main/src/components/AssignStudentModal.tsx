@@ -15,17 +15,16 @@ interface AssignStudentModalProps {
 export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, onClose, onSuccess }) => {
     const [students, setStudents] = useState<any[]>([]);
     const [companies, setCompanies] = useState<any[]>([]);
-    const [coordinators, setCoordinators] = useState<any[]>([]);
 
     const [selectedStudent, setSelectedStudent] = useState('');
     const [selectedCompany, setSelectedCompany] = useState('');
-    const [selectedCoordinator, setSelectedCoordinator] = useState('');
     const [status, setStatus] = useState('scheduled');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [error, setError] = useState('');
-    const { token } = useAuth();
+    const { token, user } = useAuth();
 
     useEffect(() => {
         if (isOpen) {
@@ -36,28 +35,21 @@ export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, 
     const fetchData = async () => {
         setIsFetching(true);
         try {
-            const [studentsRes, companiesRes, coordinatorsRes] = await Promise.all([
+            const [studentsRes, companiesRes] = await Promise.all([
                 fetch(`${API_BASE_URL}/user/search`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ role: 'student' })
                 }),
-                fetch(`${API_BASE_URL}/company`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_BASE_URL}/user/search`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ role: 'coordinator' })
-                })
+                fetch(`${API_BASE_URL}/company`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
             const studentsData = await studentsRes.json();
             const companiesData = await companiesRes.json();
-            const coordinatorsData = await coordinatorsRes.json();
 
             // Filter only unassigned students
             setStudents(Array.isArray(studentsData) ? studentsData.filter((s: any) => !s.metadata?.company) : []);
             setCompanies(Array.isArray(companiesData) ? companiesData : []);
-            setCoordinators(Array.isArray(coordinatorsData) ? coordinatorsData : []);
 
         } catch (err) {
             console.error("Failed to fetch data", err);
@@ -72,6 +64,12 @@ export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, 
         setError('');
         setIsLoading(true);
 
+        if (!user?._id) {
+            setError("You must be logged in to assign students.");
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const response = await fetch(`${API_BASE_URL}/user/assign-company`, {
                 method: 'POST',
@@ -82,9 +80,9 @@ export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, 
                 body: JSON.stringify({
                     userId: selectedStudent,
                     companyId: selectedCompany,
-                    coordinatorId: selectedCoordinator,
+                    coordinatorId: user._id,
                     status: status,
-                    deploymentDate: new Date()
+                    deploymentDate: status === 'scheduled' ? date : new Date()
                 })
             });
 
@@ -98,7 +96,6 @@ export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, 
             onClose();
             setSelectedStudent('');
             setSelectedCompany('');
-            setSelectedCoordinator('');
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -144,18 +141,6 @@ export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, 
                     />
 
                     <Select
-                        label="Select Coordinator"
-                        value={selectedCoordinator}
-                        onChange={(value) => setSelectedCoordinator(value)}
-                        required
-                        placeholder="-- Select Coordinator --"
-                        options={coordinators.map(c => ({
-                            value: c._id,
-                            label: c.userName
-                        }))}
-                    />
-
-                    <Select
                         label="Deployment Status"
                         value={status}
                         onChange={(value) => setStatus(value)}
@@ -166,6 +151,19 @@ export const AssignStudentModal: React.FC<AssignStudentModalProps> = ({ isOpen, 
                             { value: 'completed', label: 'Completed' }
                         ]}
                     />
+
+                    {status === 'scheduled' && (
+                        <div className="flex flex-col gap-1">
+                            <label className="text-sm font-medium text-gray-700">Schedule Date</label>
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                required
+                            />
+                        </div>
+                    )}
 
                     <div className="flex justify-end gap-2 mt-6">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>

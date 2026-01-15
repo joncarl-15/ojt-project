@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from '../components/Card';
-import { Input } from '../components/Input';
+
 import { Search, Send, User, MessageSquare, Users, Image as ImageIcon, X, Download, ArrowLeft, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -43,6 +45,22 @@ interface Conversation {
     };
     unreadCount: number;
 }
+
+// Animation Variants
+const sidebarContainer = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05
+        }
+    }
+};
+
+const sidebarItem = {
+    hidden: { opacity: 0, x: -10 },
+    show: { opacity: 1, x: 0 }
+};
 
 export const Messages: React.FC = () => {
     const { user, token } = useAuth();
@@ -285,7 +303,7 @@ export const Messages: React.FC = () => {
             const conversation = conversations.find(c => c.id === selectedConversationId);
             const type = conversation?.type || 'direct';
 
-            fetch(`${API_BASE_URL} / message / conversation / ${selectedConversationId} / read`, {
+            fetch(`${API_BASE_URL}/message/conversation/${selectedConversationId}/read`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -594,87 +612,113 @@ export const Messages: React.FC = () => {
 
     return (
         <div className="h-full flex flex-col">
-            <div className={`mb-4 ${selectedConversationId ? 'hidden md:block' : ''}`}>
-                <h1 className="text-2xl font-bold text-green-700 flex items-center gap-2">
-                    <MessageSquare className="text-green-700" /> Messages
-                </h1>
-            </div>
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className={`mb-6 ${selectedConversationId ? 'hidden md:block' : ''}`}
+            >
+                <div>
+                    <h1 className="text-2xl font-extrabold text-indigo-900 flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg shadow-sm">
+                            <MessageSquare className="text-indigo-600" size={24} />
+                        </div>
+                        Messages
+                    </h1>
+                    <p className="text-indigo-600 mt-1 ml-1 font-medium text-sm">Chat with students and coordinators</p>
+                </div>
+            </motion.div>
 
-            <Card className="flex-1 flex overflow-hidden border border-gray-100 shadow-sm relative">
+            <Card className="flex-1 flex overflow-hidden border border-slate-200 shadow-lg rounded-2xl relative">
                 {/* Sidebar */}
-                <div className={`w-full md:w-80 border-r border-gray-100 flex-col bg-white ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
-                    <div className="p-3 md:p-4 border-b border-gray-100">
-                        <Input
-                            placeholder="Search user or group..."
-                            icon={<Search size={18} />}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-white border border-gray-100 focus:border-green-500"
-                        />
+                <div className={`w-full md:w-80 border-r border-slate-100 flex-col bg-white ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
+                    <div className="p-4 border-b border-slate-100">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                placeholder="Search user or group..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50 text-sm transition-all"
+                            />
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto">
 
                         {/* Suggested Contacts Section */}
                         {suggestedContacts.length > 0 && !searchTerm && (
-                            <div className="mb-2">
-                                <div className="px-4 py-2 bg-gray-50/50 sticky top-0 backdrop-blur-sm">
-                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <motion.div
+                                variants={sidebarContainer}
+                                initial="hidden"
+                                animate="show"
+                                className="mb-2"
+                            >
+                                <div className="px-4 py-3 bg-slate-50/80 sticky top-0 backdrop-blur-sm border-y border-slate-100">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                                         {user?.role === 'student' ? 'Coordinators' : 'Students'}
                                     </h3>
                                 </div>
                                 {suggestedContacts.map(contact => (
-                                    <div
+                                    <motion.div
                                         key={contact._id}
+                                        variants={sidebarItem}
                                         onClick={() => setSelectedConversationId(contact._id)}
-                                        className={`px-3 py-2 cursor-pointer transition-colors flex items-center gap-3 ${selectedConversationId === contact._id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'}`}
+                                        className={`px-4 py-3 cursor-pointer transition-all flex items-center gap-3 border-l-[3px] ${selectedConversationId === contact._id ? 'bg-indigo-50/80 border-indigo-500 shadow-sm' : 'border-transparent hover:bg-slate-50'}`}
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold">
+                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold shadow-md ring-2 ring-white">
                                             {contact.firstName[0]}{contact.lastName[0]}
                                         </div>
                                         <div>
-                                            <p className={`text-sm font-medium ${selectedConversationId === contact._id ? 'text-gray-900' : 'text-gray-700'} `}>
+                                            <p className={`text-sm font-bold ${selectedConversationId === contact._id ? 'text-indigo-900' : 'text-slate-700'} `}>
                                                 {contact.firstName} {contact.lastName}
                                             </p>
-                                            <p className="text-[10px] text-gray-500 capitalize">{contact.program || contact.role}</p>
+                                            <p className="text-xs text-slate-500 capitalize font-medium">{contact.program || contact.role}</p>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
-                            </div>
+                            </motion.div>
                         )}
 
-                        <div className="px-4 py-2 bg-gray-50/50 sticky top-0 backdrop-blur-sm">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Conversations</h3>
+                        <div className="px-4 py-3 bg-slate-50/80 sticky top-0 backdrop-blur-sm border-y border-slate-100">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recent Conversations</h3>
                         </div>
-                        {filteredConversations.map(conversation => (
-                            <div
-                                key={conversation.id}
-                                onClick={() => setSelectedConversationId(conversation.id)}
-                                className={`px-3 py-3 cursor-pointer transition-colors ${selectedConversationId === conversation.id ? 'bg-green-50 border-r-2 border-green-500' : 'hover:bg-gray-50'} `}
-                            >
-                                <div className="flex justify-between items-start mb-1">
-                                    <div className="flex items-center gap-2">
-                                        {conversation.type === 'group' ? <Users size={16} className="text-gray-500" /> : null}
-                                        <span className={`font-semibold text-sm ${selectedConversationId === conversation.id ? 'text-gray-900' : 'text-gray-900'} `}>{conversation.name}</span>
+                        <motion.div
+                            variants={sidebarContainer}
+                            initial="hidden"
+                            animate="show"
+                        >
+                            {filteredConversations.map(conversation => (
+                                <motion.div
+                                    key={conversation.id}
+                                    variants={sidebarItem}
+                                    onClick={() => setSelectedConversationId(conversation.id)}
+                                    className={`px-4 py-3.5 cursor-pointer transition-all border-l-4 ${selectedConversationId === conversation.id ? 'bg-indigo-50 border-indigo-500' : 'border-transparent hover:bg-slate-50'} `}
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="flex items-center gap-2">
+                                            {conversation.type === 'group' ? <Users size={16} className="text-indigo-400" /> : null}
+                                            <span className={`font-semibold text-sm ${selectedConversationId === conversation.id ? 'text-indigo-900' : 'text-slate-800'} `}>{conversation.name}</span>
+                                        </div>
+                                        <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wide bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{conversation.role || 'Group'}</span>
                                     </div>
-                                    <span className="text-xs text-green-600 font-medium capitalize">{conversation.role || 'Group'}</span>
-                                </div>
-                                <p className={`text-sm ${selectedConversationId === conversation.id ? 'text-green-600' : 'text-gray-500'} truncate`}>
-                                    {conversation.type === 'group' && conversation.lastMessage && !conversation.lastMessage.isOwn ? 'Someone: ' : ''}
-                                    {conversation.lastMessage?.text}
-                                </p>
-                                <div className="flex justify-between items-center mt-1">
-                                    <p className="text-xs text-green-600">
-                                        {conversation.lastMessage?.timestamp && new Date(conversation.lastMessage.timestamp).toLocaleDateString()}
+                                    <p className={`text-sm ${selectedConversationId === conversation.id ? 'text-indigo-600/80' : 'text-slate-500'} truncate font-medium`}>
+                                        {conversation.type === 'group' && conversation.lastMessage && !conversation.lastMessage.isOwn ? 'Someone: ' : ''}
+                                        {conversation.lastMessage?.text}
                                     </p>
-                                    {conversation.unreadCount > 0 && (
-                                        <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-green-600 rounded-xl">
-                                            {conversation.unreadCount}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                                    <div className="flex justify-between items-center mt-2">
+                                        <p className="text-[10px] text-slate-400 font-medium">
+                                            {conversation.lastMessage?.timestamp && new Date(conversation.lastMessage.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                        {conversation.unreadCount > 0 && (
+                                            <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-rose-500 rounded-full shadow-sm shadow-rose-200">
+                                                {conversation.unreadCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </motion.div>
                         {filteredConversations.length === 0 && !isLoading && suggestedContacts.length === 0 && (
                             <div className="p-4 text-center text-gray-400 text-sm">
                                 No conversations found.
@@ -684,31 +728,42 @@ export const Messages: React.FC = () => {
                 </div>
 
                 {/* Chat Area */}
-                <div className={`flex-1 flex-col bg-white ${selectedConversationId ? 'flex' : 'hidden md:flex'} `}>
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className={`flex-1 flex-col bg-white ${selectedConversationId ? 'flex' : 'hidden md:flex'} `}
+                >
                     {selectedConversationId ? (
                         <>
                             {/* Chat Header */}
-                            <div className="p-2 md:p-4 border-b border-gray-100 flex items-center gap-2 md:gap-3">
+                            <div className="p-3 md:p-4 border-b border-slate-100 flex items-center gap-2 md:gap-4 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
                                 <button
                                     onClick={() => setSelectedConversationId(null)}
-                                    className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700"
+                                    className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700"
                                 >
                                     <ArrowLeft size={20} />
                                 </button>
-                                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md">
                                     {(headerDisplay.role === 'Group Chat' || headerDisplay.role.includes('Group')) ? <Users size={20} /> : <User size={20} />}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-900 text-sm md:text-lg">{headerDisplay.name}</h3>
-                                    <p className="text-[10px] md:text-xs text-green-600 capitalize">{headerDisplay.role}</p>
+                                    <h3 className="font-bold text-slate-800 text-sm md:text-lg">{headerDisplay.name}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                        <p className="text-[10px] md:text-xs text-slate-500 capitalize font-medium">{headerDisplay.role}</p>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Messages List */}
-                            <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4 bg-gray-50/30">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
                                 {currentMessages.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                        <p className="text-sm">Start the conversation!</p>
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                            <MessageSquare size={32} />
+                                        </div>
+                                        <p className="text-sm font-medium">Start the conversation!</p>
                                     </div>
                                 )}
                                 {currentMessages.map(message => {
@@ -717,9 +772,9 @@ export const Messages: React.FC = () => {
                                         <div key={message._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} `}>
                                             <div className="max-w-[90%] md:max-w-[70%] relative group min-w-0">
                                                 {!isOwn && selectedConversation?.type === 'group' && (
-                                                    <p className="text-xs text-gray-500 mb-1 ml-1">{message.sender.firstName}</p>
+                                                    <p className="text-[10px] font-bold text-slate-500 mb-1 ml-1">{message.sender.firstName}</p>
                                                 )}
-                                                <div className={`rounded-2xl px-4 py-2 break-words overflow-hidden ${isOwn ? 'bg-green-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'} `}>
+                                                <div className={`rounded-2xl px-5 py-3 break-words overflow-hidden shadow-sm ${isOwn ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'} `}>
                                                     {message.image && (
                                                         <div className="mb-2 -mx-2 mt-[-4px] relative">
                                                             <img
@@ -751,7 +806,7 @@ export const Messages: React.FC = () => {
                                                     ) : (
                                                         <>
                                                             {message.content && renderMessageContent(message.content)}
-                                                            <span className={`text-[10px] block mt-1 ${isOwn ? 'text-green-100' : 'text-gray-400'} `}>
+                                                            <span className={`text-[10px] block mt-1 font-medium ${isOwn ? 'text-indigo-200' : 'text-slate-400'} `}>
                                                                 {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                         </>
@@ -833,17 +888,17 @@ export const Messages: React.FC = () => {
                             <p className="text-sm font-medium text-gray-500">Select a conversation to start chatting.</p>
                         </div>
                     )}
-                </div>
+                </motion.div>
             </Card>
             {/* Image Viewer Modal */}
-            {selectedImage && (
+            {selectedImage && createPortal(
                 <div
-                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 animate-fade-in"
                     onClick={() => setSelectedImage(null)}
                 >
                     <button
                         onClick={() => setSelectedImage(null)}
-                        className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-50 rounded-full hover:bg-white/10 transition-colors"
                         title="Close"
                     >
                         <X size={32} />
@@ -868,7 +923,7 @@ export const Messages: React.FC = () => {
                                 window.open(selectedImage, '_blank');
                             }
                         }}
-                        className="absolute top-4 right-16 text-white hover:text-gray-300 p-2"
+                        className="absolute top-4 right-16 text-white hover:text-gray-300 p-2 z-50 rounded-full hover:bg-white/10 transition-colors"
                         title="Download"
                     >
                         <Download size={32} />
@@ -876,10 +931,11 @@ export const Messages: React.FC = () => {
                     <img
                         src={selectedImage}
                         alt="Full size"
-                        className="max-w-full max-h-full object-contain rounded-lg"
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     />
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

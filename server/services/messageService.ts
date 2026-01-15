@@ -234,6 +234,23 @@ export class MessageService {
     return updatedMessage;
   }
 
+  async markAllAsRead(userId: string, io?: SocketIOServer): Promise<void> {
+    const query = {
+      receiver: userId,
+      receiverModel: 'User',
+      isRead: false
+    };
+
+    await this.messageRepository.searchAndUpdate(query, { isRead: true }, { multi: true });
+
+    if (io) {
+      io.to(userId).emit("allMessagesRead", {
+        userId: userId,
+        readAt: new Date()
+      });
+    }
+  }
+
   async markConversationAsRead(
     targetId: string,
     userId: string,

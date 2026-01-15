@@ -4,14 +4,51 @@
 
 @layer base {
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   html,
   body {
-    @apply h-[100dvh] w-screen overflow-hidden overscroll-none;
+    @apply h-[100dvh] w-screen min-h-screen overflow-hidden overscroll-none scroll-smooth;
   }
 
   body {
-    body {
-      @apply bg-gray-50 text-gray-900 font-sans antialiased transition-colors duration-200;
-    }
+    @apply bg-gray-50 text-slate-900 font-sans antialiased text-base selection:bg-primary-500/20 selection:text-primary-900 transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-slate-200/5;
+  }
+
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-xl border border-slate-800/50;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary-500/10;
+  }
+
+  /* Custom scrollbar for webkit */
+  .custom-scrollbar::-webkit-scrollbar,
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200/50 rounded-full hover:bg-slate-300/50 transition-colors;
   }
 }

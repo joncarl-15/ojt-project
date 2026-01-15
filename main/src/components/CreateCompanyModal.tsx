@@ -5,22 +5,26 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { LocationMap } from './LocationMap';
 
 interface CreateCompanyModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
     companyToEdit?: any; // Using any for flexibility or match the interface
+    existingCompanies?: any[];
 }
 
-export const CreateCompanyModal: React.FC<CreateCompanyModalProps> = ({ isOpen, onClose, onSuccess, companyToEdit }) => {
+export const CreateCompanyModal: React.FC<CreateCompanyModalProps> = ({ isOpen, onClose, onSuccess, companyToEdit, existingCompanies }) => {
     const [formData, setFormData] = useState({
         name: '',
         address: '',
         description: '',
         contactEmail: '',
         contactPerson: '',
-        contactPhone: ''
+        contactPhone: '',
+        safeZone: null as any,
+        safeZoneLabel: ''
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -35,7 +39,9 @@ export const CreateCompanyModal: React.FC<CreateCompanyModalProps> = ({ isOpen, 
                     description: companyToEdit.description || '',
                     contactEmail: companyToEdit.contactEmail || '',
                     contactPerson: companyToEdit.contactPerson || '',
-                    contactPhone: companyToEdit.contactPhone || ''
+                    contactPhone: companyToEdit.contactPhone || '',
+                    safeZone: companyToEdit.safeZone || null,
+                    safeZoneLabel: companyToEdit.safeZoneLabel || ''
                 });
             } else {
                 setFormData({
@@ -44,7 +50,9 @@ export const CreateCompanyModal: React.FC<CreateCompanyModalProps> = ({ isOpen, 
                     description: '',
                     contactEmail: '',
                     contactPerson: '',
-                    contactPhone: ''
+                    contactPhone: '',
+                    safeZone: null,
+                    safeZoneLabel: ''
                 });
             }
         }
@@ -141,6 +149,26 @@ export const CreateCompanyModal: React.FC<CreateCompanyModalProps> = ({ isOpen, 
                         required
                     />
                 </div>
+
+                <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">Safe Zone (Geofence)</label>
+                    <div className="border border-gray-300 rounded-lg overflow-hidden">
+                        <LocationMap
+                            initialSafeZone={formData.safeZone}
+                            onZoneChange={(zone) => setFormData({ ...formData, safeZone: zone })}
+                            zoneLabel={formData.safeZoneLabel || formData.name}
+                            existingCompanies={existingCompanies}
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500">Draw a polygon to define the area where students can time-in.</p>
+                </div>
+
+                <Input
+                    label="Safe Zone Label (Optional)"
+                    placeholder="e.g. Main Office, Building A (Defaults to Company Name)"
+                    value={formData.safeZoneLabel}
+                    onChange={(e) => setFormData({ ...formData, safeZoneLabel: e.target.value })}
+                />
 
                 <div className="flex justify-end gap-2 mt-6">
                     <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>
