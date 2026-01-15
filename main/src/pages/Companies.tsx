@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Plus, Loader2, Pencil, Minus, Users } from 'lucide-react';
+import { Building2, Plus, Loader2, Pencil, Minus, Users, Map } from 'lucide-react';
 import { Card, CardBody } from '../components/Card';
 import { Button } from '../components/Button';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import { CreateCompanyModal } from '../components/CreateCompanyModal'; // Assumption
+import { CreateCompanyModal } from '../components/CreateCompanyModal';
+import { LiveMapModal } from '../components/LiveMapModal';
 
 interface Company {
     _id: string;
@@ -14,6 +15,8 @@ interface Company {
     description: string;
     active?: number;
     total?: number;
+    safeZone?: any;
+    safeZoneLabel?: string;
 }
 
 // Animation Variants
@@ -33,14 +36,14 @@ const item = {
 };
 
 export const Companies: React.FC = () => {
-    // ... existing state ...
     const [companies, setCompanies] = useState<Company[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const [isLiveMapOpen, setIsLiveMapOpen] = useState(false);
+    const [selectedCompanyForLiveMap, setSelectedCompanyForLiveMap] = useState<any>(null);
     const { token } = useAuth();
 
-    // ... existing functions ...
     const fetchCompanies = async () => {
         setIsLoading(true);
         try {
@@ -145,6 +148,16 @@ export const Companies: React.FC = () => {
                                         </div>
                                         <div className="flex gap-2 transition-opacity">
                                             <button
+                                                className="text-indigo-500 hover:text-indigo-700 p-2 rounded-lg hover:bg-indigo-50 transition-colors"
+                                                onClick={() => {
+                                                    setSelectedCompanyForLiveMap(company);
+                                                    setIsLiveMapOpen(true);
+                                                }}
+                                                title="Live View"
+                                            >
+                                                <Map size={18} />
+                                            </button>
+                                            <button
                                                 className="text-amber-500 hover:text-amber-700 p-2 rounded-lg hover:bg-amber-50 transition-colors"
                                                 onClick={() => handleEdit(company)}
                                                 title="Edit Company"
@@ -189,6 +202,12 @@ export const Companies: React.FC = () => {
                     )}
                 </motion.div>
             )}
+
+            <LiveMapModal
+                isOpen={isLiveMapOpen}
+                onClose={() => setIsLiveMapOpen(false)}
+                company={selectedCompanyForLiveMap}
+            />
 
             <CreateCompanyModal
                 isOpen={isModalOpen}

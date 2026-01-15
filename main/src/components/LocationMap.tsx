@@ -39,6 +39,11 @@ interface LocationMapProps {
     className?: string;
     zoneLabel?: string;
     existingCompanies?: any[];
+    markers?: Array<{
+        position: [number, number];
+        tooltip?: string;
+        popup?: React.ReactNode;
+    }>;
 }
 
 // ... GeomanControls ...
@@ -204,7 +209,8 @@ export const LocationMap: React.FC<LocationMapProps> = ({
     height = '400px',
     className,
     zoneLabel,
-    existingCompanies
+    existingCompanies,
+    markers
 }) => {
     const [center, setCenter] = useState<[number, number]>([14.5995, 120.9842]); // Manila
     // Capture the initial center for MapContainer initialization only.
@@ -239,27 +245,23 @@ export const LocationMap: React.FC<LocationMapProps> = ({
     useEffect(() => {
         if (hasInitialFit.current) return;
 
-        if (readOnly && userLocation && initialSafeZone) {
-            // Mode: Show Both (Safe Zone + User) - "View together"
+        // Priority 1: Fit to Safe Zone if available
+        if (initialSafeZone) {
             try {
                 const layer = L.geoJSON(initialSafeZone);
                 const bounds = layer.getBounds();
                 if (bounds.isValid()) {
-                    // Extend bounds to include user location
-                    bounds.extend(userLocation);
                     setViewBounds(bounds);
                     hasInitialFit.current = true;
-                } else {
-                    setCenter(userLocation);
-                    hasInitialFit.current = true;
+                    return;
                 }
             } catch (e) {
-                console.warn("Failed to calculate combined bounds", e);
-                setCenter(userLocation);
-                hasInitialFit.current = true;
+                console.warn("Failed to calculate safe zone bounds", e);
             }
-        } else if (userLocation) {
-            // Mode: Follow User only (Fit once)
+        }
+
+        // Priority 2: Fit to User Location if available
+        if (userLocation) {
             setCenter(userLocation);
             hasInitialFit.current = true;
         }
@@ -398,6 +400,11 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                             <Popup>You are here</Popup>
                         </Marker>
                     )}
+                    {markers && markers.map((marker, index) => (
+                        <Marker key={index} position={marker.position} icon={userIcon}>
+                            {marker.popup ? marker.popup : (marker.tooltip && <Popup>{marker.tooltip}</Popup>)}
+                        </Marker>
+                    ))}
                 </MapContainer>
             </div>
             {readOnly && (

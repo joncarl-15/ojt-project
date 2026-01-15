@@ -19,6 +19,7 @@ import { Messages } from './pages/Messages';
 import { UploadDocuments } from './pages/UploadDocuments';
 import { MyTasks } from './pages/MyTasks';
 import { CoordinatorTasks } from './pages/CoordinatorTasks';
+import { LiveTracking } from './pages/LiveTracking';
 
 function App() {
     return (
@@ -42,6 +43,7 @@ function App() {
                             <Route path="/my-tasks" element={<MyTasks />} />
                             {/* Coordinator Routes */}
                             <Route path="/tasks" element={<CoordinatorTasks />} />
+                            <Route path="/live-tracking" element={<LiveTracking />} />
                             {/* Admin & Coordinator Routes */}
                             <Route path="/students" element={<Students />} />
                             <Route path="/coordinators" element={<Coordinators />} />

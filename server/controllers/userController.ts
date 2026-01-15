@@ -331,4 +331,21 @@ export class UserController {
       next(error);
     }
   };
+
+  @route.post("/location")
+  updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await requireAuthentication(req, res);
+      const userId = (req as AuthenticatedRequest).user?.id;
+      const { lat, lng } = req.body;
+
+      if (!userId) throw new AppError("Authentication required", 401);
+      if (lat === undefined || lng === undefined) throw new AppError("Latitude and longitude are required", 400);
+
+      const user = await this.userService.updateUserLocation(userId, lat, lng);
+      res.json({ message: "Location updated", location: user.latestLocation });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

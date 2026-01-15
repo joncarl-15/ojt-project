@@ -26,6 +26,44 @@ export const TimeLogger: React.FC<TimeLoggerProps> = ({ className }) => {
     const [retryTrigger, setRetryTrigger] = useState(0);
 
     const watchIdRef = useRef<number | null>(null);
+    const latestLocationRef = useRef<[number, number] | null>(null);
+    useEffect(() => { latestLocationRef.current = userLocation; }, [userLocation]);
+
+    // Broadcast location logic
+    const broadcastLocation = async (lat: number, lng: number) => {
+        if (!token) return;
+        try {
+            await fetch(`${API_BASE_URL}/user/location`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ lat, lng })
+            });
+        } catch (e) {
+            console.warn("Location broadcast failed", e);
+        }
+    };
+
+    // Interval broadcast
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (latestLocationRef.current) {
+                broadcastLocation(latestLocationRef.current[0], latestLocationRef.current[1]);
+            }
+        }, 5000); // 5 seconds interval
+        return () => clearInterval(interval);
+    }, [token]);
+
+    // Immediate broadcast on first valid location
+    const [hasInitialBroadcast, setHasInitialBroadcast] = useState(false);
+    useEffect(() => {
+        if (userLocation && !hasInitialBroadcast) {
+            broadcastLocation(userLocation[0], userLocation[1]);
+            setHasInitialBroadcast(true);
+        }
+    }, [userLocation, hasInitialBroadcast, token]);
 
     useEffect(() => {
         fetchTodayRecord();

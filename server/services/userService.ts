@@ -78,6 +78,13 @@ export class UserService {
     return this.userRepository.getUsers(query);
   }
 
+  async getStudentsByCompany(companyId: string): Promise<UserModel[]> {
+    return this.userRepository.getUsers({
+      "metadata.company": companyId,
+      "role": "student"
+    });
+  }
+
   async createUser(userData: Partial<UserModel>, requestingUser?: TokenPayload) {
     if (!userData.firstName || !userData.lastName) {
       throw new AppError("User firstname and lastname data are required", 400);
@@ -424,4 +431,18 @@ export class UserService {
   }
 
 
+  async updateUserLocation(userId: string, lat: number, lng: number): Promise<UserModel> {
+    const updateData: Partial<UserModel> = {
+      latestLocation: {
+        lat,
+        lng,
+        timestamp: new Date()
+      }
+    };
+    const user = await this.userRepository.updateUser(userId, updateData);
+    if (!user) {
+      throw new AppError("Failed to update location", 500);
+    }
+    return user;
+  }
 }

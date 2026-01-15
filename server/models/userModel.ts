@@ -20,6 +20,11 @@ export interface UserModel extends Document {
   isArchived: boolean;
   archivedAt?: Date;
   lastUsernameChangeDate?: Date;
+  latestLocation?: {
+    lat: number;
+    lng: number;
+    timestamp: Date;
+  };
 }
 
 const UserSchema = new Schema<UserModel>(
@@ -89,6 +94,11 @@ const UserSchema = new Schema<UserModel>(
     },
     lastUsernameChangeDate: {
       type: Date,
+    },
+    latestLocation: {
+      lat: Number,
+      lng: Number,
+      timestamp: Date
     },
   },
   { timestamps: true }

@@ -2,14 +2,17 @@ import { NextFunction, Request, Response } from "express";
 import { route } from "express-extract-routes";
 import { requireAuthentication } from "../helpers/auth";
 import { CompanyService } from "../services/companyService";
+import { UserService } from "../services/userService";
 
 // Purpose: This controller class is responsible for handling the company related requests.
 @route("/company")
 export class CompanyController {
   private companyService: CompanyService;
+  private userService: UserService;
 
   constructor() {
     this.companyService = new CompanyService();
+    this.userService = new UserService();
   }
 
   @route.post("/")
@@ -81,6 +84,17 @@ export class CompanyController {
 
       const company = await this.companyService.searchCompany(req.body);
       res.json(company);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  @route.get("/:id/students")
+  getCompanyStudents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await requireAuthentication(req, res);
+      const students = await this.userService.getStudentsByCompany(req.params.id);
+      res.json(students);
     } catch (error) {
       next(error);
     }

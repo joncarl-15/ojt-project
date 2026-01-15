@@ -16,7 +16,8 @@ import {
     Archive,
     MessageSquare,
     Upload,
-    CheckSquare
+    CheckSquare,
+    Map as MapIcon
 } from 'lucide-react';
 import { PullToRefresh } from '../components/PullToRefresh';
 
@@ -77,6 +78,7 @@ export const DashboardLayout: React.FC = () => {
 
     const coordinatorNavItems = [
         { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: '/dashboard' },
+        { icon: <MapIcon size={18} />, label: 'Live Tracking', path: '/live-tracking' },
         { icon: <Users size={18} />, label: 'Students', path: '/students' },
         { icon: <MessageSquare size={18} />, label: 'Messages', path: '/messages', badge: unreadCount },
         { icon: <CheckSquare size={18} />, label: 'Tasks', path: '/tasks' },
